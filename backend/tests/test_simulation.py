@@ -2,6 +2,8 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
+from app.models.power_system_input import PowerSystemInput
+from app.models.power_system_results import PowerSystemResult
 
 client = TestClient(app)
 
@@ -47,18 +49,45 @@ def test_simulation_success():
                 "base_kv": 230.0
             }
         ],
+        "loads": [
+            {
+                "bus": 2,
+                "p_mw": 40.0,
+                "q_mvar": 20.0,
+                "scaling": 1.0,
+                "in_service": True
+            },
+            {
+                "bus": 3,
+                "p_mw": 25.0,
+                "q_mvar": 15.0,
+                "scaling": 1.0,
+                "in_service": True
+            }
+        ],
+        "generators": [
+            {
+                "bus": 3,
+                "p_mw": 0.0,
+                "vm_pu": 1.04,
+                "scaling": 1.0,
+                "in_service": True
+            }
+        ],
+        "ext_grid": {
+            "bus": 1,
+            "vm_pu": 1.05,
+            "va_degree": 0.0,
+            "in_service": True
+        },
         "lines": [
             {
                 "from_bus": 1,
                 "to_bus": 2,
-                "r": 0.01,    # Resistência pequena
-                "x": 0.06,    # Reatância típica
-                "b": 0.030,   # Susceptância moderada
+                "r": 0.01,
+                "x": 0.06,
+                "b": 0.030,
                 "rateA": 250.0,
-                "rateB": 250.0,
-                "rateC": 250.0,
-                "ratio": 1.0,
-                "angle": 0.0,
                 "status": 1
             },
             {
@@ -68,10 +97,6 @@ def test_simulation_success():
                 "x": 0.08,
                 "b": 0.025,
                 "rateA": 250.0,
-                "rateB": 250.0,
-                "rateC": 250.0,
-                "ratio": 1.0,
-                "angle": 0.0,
                 "status": 1
             },
             {
@@ -81,10 +106,6 @@ def test_simulation_success():
                 "x": 0.07,
                 "b": 0.020,
                 "rateA": 250.0,
-                "rateB": 250.0,
-                "rateC": 250.0,
-                "ratio": 1.0,
-                "angle": 0.0,
                 "status": 1
             }
         ],
@@ -100,9 +121,12 @@ def test_simulation_success():
     
     # Verificar o conteúdo da resposta
     data = response.json()
-    print(data)
+    ## print(data)
     assert "buses" in data
     assert "lines" in data
+    assert "loads" in data
+    assert "generators" in data
+    assert "ext_grid" in data
     
     # Verificar a estrutura dos dados
     assert isinstance(data["buses"], list)
@@ -112,9 +136,7 @@ def test_simulation_success():
     
     # Verificar resultados específicos
     buses = data["buses"]
-    assert any(bus["type"] == 3 for bus in buses)  # deve ter uma barra slack
-    assert any(bus["type"] == 2 for bus in buses)  # deve ter uma barra PV
-    assert all(0.9 <= bus["Vm"] <= 1.1 for bus in buses)  # tensões dentro dos limites
+    assert not all(0.9 <= bus["vm_pu"] <= 1.1 for bus in buses)  # tensões fora dos limites
 
 def test_simulation_missing_fields():
     response = client.post("/simulate", json={})

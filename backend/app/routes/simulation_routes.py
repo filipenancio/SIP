@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException
-from app.models.power_system import PowerSystem
+from app.models.power_system_input import PowerSystemInput
+from app.models.power_system_results import PowerSystemResult
 from app.services.power_flow import simulate_power_flow
 
 router = APIRouter()
 
 @router.post("/")
-async def run_simulation(system: PowerSystem):
+async def run_simulation(system: PowerSystemInput):
     try:
         result = simulate_power_flow(system)
         return result

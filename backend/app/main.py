@@ -4,6 +4,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.routes.simulation_routes import router as simulation_router
+from app.models.power_system_input import PowerSystemInput
+from app.models.power_system_results import PowerSystemResult
 
 app = FastAPI(
     title="Simulador de Sistemas de Potência",
