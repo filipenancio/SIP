@@ -25,11 +25,11 @@ class Load(BaseModel):
 
 class Generator(BaseModel):
     bus: int
-    pg: float
-    qg: float = 0.0
+    p_mw: float
+    q_mvar: float = 0.0
     qmax: float = 100.0
     qmin: float = -100.0
-    Vg: float = 1.0
+    vm_pu: float = 1.0
     mBase: float = 100.0
     status: int = 1
     Pmax: float = 100.0

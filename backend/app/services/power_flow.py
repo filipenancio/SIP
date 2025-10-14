@@ -49,7 +49,7 @@ def simulate_power_flow(system: PowerSystemInput) -> PowerSystemResult:
                 pp.create_ext_grid(
                     net,
                     bus=bus_indices[gen.bus],
-                    vm_pu=gen.Vg,
+                    vm_pu=gen.vm_pu,
                     va_degree=0.0,  # Ângulo de referência
                     in_service=bool(gen.status)
                 )
@@ -58,8 +58,8 @@ def simulate_power_flow(system: PowerSystemInput) -> PowerSystemResult:
                 pp.create_gen(
                     net,
                     bus=bus_indices[gen.bus],
-                    p_mw=gen.pg,
-                    vm_pu=gen.Vg,
+                    p_mw=gen.p_mw,
+                    vm_pu=gen.vm_pu,
                     max_q_mvar=gen.qmax,
                     min_q_mvar=gen.qmin,
                     in_service=bool(gen.status)
@@ -108,7 +108,7 @@ def simulate_power_flow(system: PowerSystemInput) -> PowerSystemResult:
                     ql_mvar=float(net.res_line.ql_mvar[i]),
                     i_ka=float(net.res_line.i_ka[i]),
                     loading_percent=float(net.res_line.loading_percent[i]),
-                    status=int(net.line.in_service[i])
+                    in_service=bool(net.line.in_service[i])
                 )
                 for i in range(len(net.line))
             ],
@@ -137,6 +137,8 @@ def simulate_power_flow(system: PowerSystemInput) -> PowerSystemResult:
                 q_mvar=float(net.res_ext_grid.q_mvar[0])
             )
         )
+        
+        return result
         
     except LoadflowNotConverged:
         raise ValueError("O fluxo de potência não convergiu")

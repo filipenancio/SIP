@@ -3,11 +3,74 @@ import pandapower as pp
 from app.models.power_system_input import (
     PowerSystemInput, Bus, Load, Generator, ExtGrid, Line
 )
-from app.models.power_system_results import (
-    PowerSystemResult, BusResult, LoadResult, GeneratorResult, ExtGridResult, LineResult
-)
 
-def matpower_to_power_system_input(net: pp.pandapowerNet) -> PowerSystemInput:
+def matpower_to_power_system_input(data: Dict[str, Any]) -> PowerSystemInput:
+    """
+    Converte dados no formato MATPOWER para PowerSystemInput.
+    
+    Args:
+        data: Dicionário com dados no formato MATPOWER
+        
+    Returns:
+        PowerSystemInput: Objeto convertido para o formato do sistema
+    """
+    try:
+        # Processar barras
+        buses = [Bus(**bus) for bus in data["buses"]]
+        generators = [Generator(**gen) for gen in data["generators"]]
+        lines = [Line(**line) for line in data["lines"]]
+        
+        # processar cargas
+        loads = []
+        for bus_data in buses:
+            # Se houver carga na barra, criar objeto Load
+            if bus_data.Pd != 0.0 or bus_data.Qd != 0.0:
+                load = Load(
+                    bus=bus_data.id,
+                    p_mw=bus_data.Pd,
+                    q_mvar=bus_data.Qd,
+                    scaling=1.0,
+                    in_service=True
+                )
+                loads.append(load)
+    
+        # Encontrar barra slack e configurar ext_grid
+        slack_bus = next(bus for bus in buses if bus.type == 3)
+        slack_gen = next((gen for gen in generators if gen.bus == slack_bus.id), None)
+
+        if slack_gen:
+            ext_grid = ExtGrid(
+                bus=slack_bus.id,
+                vm_pu=slack_gen.vm_pu,
+                va_degree=slack_bus.Va,
+                in_service=bool(slack_gen.status)
+            )
+        else:
+            ext_grid = ExtGrid(
+                bus=slack_bus.id,
+                vm_pu=slack_bus.Vm,
+                va_degree=slack_bus.Va,
+                in_service=True
+            )
+
+        # Criar objeto PowerSystemInput
+        return PowerSystemInput(
+            baseMVA=data["baseMVA"],
+            buses=buses,
+            loads=loads,
+            generators=generators,
+            ext_grid=ext_grid,
+            lines=lines,
+            version=data.get("version", "2"),
+            name=data.get("name", "matpower_case")
+        )
+
+    except KeyError as e:
+        raise ValueError(f"Campo obrigatório ausente: {str(e)}")
+    except Exception as e:
+        raise ValueError(f"Erro ao converter dados MATPOWER: {str(e)}")
+
+def matpower_net_to_power_system_input(net: pp.pandapowerNet) -> PowerSystemInput:
     """
     Converte uma rede pandapower (carregada do MATPOWER) para PowerSystemInput
     """
@@ -94,79 +157,6 @@ def matpower_to_power_system_input(net: pp.pandapowerNet) -> PowerSystemInput:
         generators=generators,
         ext_grid=ext_grid,
         lines=lines,
-        version="2",
-        name="personalized_case"
-    )
-
-def _convert_results(self, net: pp.pandapowerNet) -> PowerSystemResult:
-    """Converte os resultados do pandapower para nosso formato"""
-    from app.models.power_system_results import (
-        BusResult, LineResult, LoadResult, 
-        GeneratorResult, ExtGridResult, PowerSystemResult
-    )
-    
-    # Converter resultados das barras
-    buses = [
-        BusResult(
-            bus_id=int(i),
-            Vm=float(net.res_bus.vm_pu[i]),  # Mudado de vm_pu para Vm
-            Va=float(net.res_bus.va_degree[i]),  # Mudado de va_degree para Va
-            p_mw=float(net.res_bus.p_mw[i]),
-            q_mvar=float(net.res_bus.q_mvar[i])
-        )
-        for i in range(len(net.bus))
-    ]
-    
-    # Converter resultados das linhas
-    lines = [
-        LineResult(
-            from_bus=int(line.from_bus + 1),
-            to_bus=int(line.to_bus + 1),
-            p_mw=float(line.p_mw),
-            q_mvar=float(line.q_mvar),
-            status=int(line.in_service)
-        )
-        for _, line in net.line.iterrows()
-    ]
-    
-    # Converter resultados das cargas
-    loads = [
-        LoadResult(
-            bus=int(load.bus + 1),
-            p_mw=float(load.p_mw),
-            q_mvar=float(load.q_mvar),
-            scaling=float(load.scaling),
-            in_service=bool(load.in_service)
-        )
-        for _, load in net.load.iterrows()
-    ] if not net.load.empty else []
-
-    # Converter resultados dos geradores
-    generators = [
-        GeneratorResult(
-            bus=int(gen.bus + 1),
-            p_mw=float(gen.p_mw),
-            vm_pu=float(gen.vm_pu),
-            scaling=float(gen.scaling),
-            in_service=bool(gen.in_service)
-        )
-        for _, gen in net.gen.iterrows()
-    ] if not net.gen.empty else []
-
-    # Converter resultados da barra slack
-    ext_grid = ExtGridResult(
-        bus=int(net.ext_grid.bus.iloc[0] + 1),
-        vm_pu=float(net.ext_grid.vm_pu.iloc[0]),
-        va_degree=float(net.ext_grid.va_degree.iloc[0]),
-        in_service=bool(net.ext_grid.in_service.iloc[0])
-    )
-
-    return PowerSystemResult(
-        buses=buses,
-        lines=lines,
-        loads=loads,
-        generators=generators,
-        ext_grid=ext_grid,
         version="2",
         name="personalized_case"
     )

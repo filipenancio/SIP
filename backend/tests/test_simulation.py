@@ -17,24 +17,24 @@ def test_simulation_success():
         "baseMVA": 100.0,
         "buses": [
             {
-                "id": 1,
-                "type": 3,  # Slack bus
-                "Pd": 0.0,  # Sem carga
+                "id": 0,
+                "type": 3,
+                "Pd": 0.0,
                 "Qd": 0.0,
                 "Gs": 0,
                 "Bs": 0,
                 "area": 1,
-                "Vm": 1.05,  # Tensão controlada
-                "Va": 0.0,   # Ângulo de referência
+                "Vm": 1.05,
+                "Va": 0.0,
                 "base_kv": 230.0,
                 "zone": 1,
                 "vm_max": 1.1,
-                "vm_min": 0.9,
+                "vm_min": 0.9
             },
             {
-                "id": 2,
-                "type": 1,  # PQ bus
-                "Pd": 40.0,  # Carga moderada
+                "id": 1,
+                "type": 1,
+                "Pd": 40.0,
                 "Qd": 20.0,
                 "Gs": 0,
                 "Bs": 0,
@@ -47,14 +47,14 @@ def test_simulation_success():
                 "vm_max": 1.1
             },
             {
-                "id": 3,
-                "type": 2,  # PV bus
-                "Pd": 25.0,  # Carga menor
+                "id": 2,
+                "type": 2,
+                "Pd": 25.0,
                 "Qd": 15.0,
                 "Gs": 0,
                 "Bs": 0,
                 "area": 1,
-                "Vm": 1.04,  # Tensão controlada
+                "Vm": 1.04,
                 "Va": 0.0,
                 "base_kv": 230.0,
                 "zone": 1,
@@ -64,12 +64,12 @@ def test_simulation_success():
         ],
         "generators": [
             {
-                "bus": 3,
-                "pg": 35.0,
-                "qg": 0.0,
+                "bus": 2,
+                "p_mw": 35.0,
+                "q_mvar": 0.0,
                 "qmax": 100.0,
                 "qmin": -100.0,
-                "Vg": 1.02,
+                "vm_pu": 1.02,
                 "mBase": 100.0,
                 "status": 1,
                 "Pmax": 50.0,
@@ -87,12 +87,12 @@ def test_simulation_success():
                 "apf": 0.0
             },
             {
-                "bus": 1,
-                "pg": 0.0,
-                "qg": 0.0,
+                "bus": 0,
+                "p_mw": 0.0,
+                "q_mvar": 0.0,
                 "qmax": 100.0,
                 "qmin": -100.0,
-                "Vg": 1,
+                "vm_pu": 1.0,
                 "mBase": 100.0,
                 "status": 1,
                 "Pmax": 0.0,
@@ -112,11 +112,11 @@ def test_simulation_success():
         ],
         "lines": [
             {
-                "from_bus": 1,
-                "to_bus": 2,
+                "from_bus": 0,
+                "to_bus": 1,
                 "r": 0.01,
                 "x": 0.06,
-                "b": 0.030,
+                "b": 0.03,
                 "rateA": 250.0,
                 "rateB": 250.0,
                 "rateC": 250.0,
@@ -127,8 +127,8 @@ def test_simulation_success():
                 "angmax": 360.0
             },
             {
-                "from_bus": 1,
-                "to_bus": 3,
+                "from_bus": 0,
+                "to_bus": 2,
                 "r": 0.02,
                 "x": 0.08,
                 "b": 0.025,
@@ -142,11 +142,11 @@ def test_simulation_success():
                 "angmax": 360.0
             },
             {
-                "from_bus": 2,
-                "to_bus": 3,
+                "from_bus": 1,
+                "to_bus": 2,
                 "r": 0.015,
                 "x": 0.07,
-                "b": 0.020,
+                "b": 0.02,
                 "rateA": 250.0,
                 "rateB": 250.0,
                 "rateC": 250.0,
@@ -163,6 +163,7 @@ def test_simulation_success():
 
     # Fazer a requisição POST
     response = client.post("/sip/simulate/", json=payload)
+    print(response.json())
     
     # Verificar o status code
     assert response.status_code == 200

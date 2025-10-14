@@ -1,10 +1,11 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Path
 import os
 from typing import List
-from app.models.power_system_input import PowerSystemInput, Load, ExtGrid
+from app.models.power_system_input import PowerSystemInput, Load, ExtGrid, Bus, Generator, Line
 from app.models.power_system_results import PowerSystemResult
 from app.services.matpower_service import MatpowerService
 from app.services.power_flow import simulate_power_flow
+from app.utils.parser import matpower_to_power_system_input
 
 router = APIRouter()
 matpower_service = MatpowerService()
@@ -51,58 +52,28 @@ async def simulate_matpower_filename(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/simulate", response_model=PowerSystemResult)
-async def run_simulation(system: PowerSystemInput):
+async def run_simulation(data: dict):
     """
     Executa simulação de fluxo de potência a partir de dados JSON.
     
     Args:
-        system (PowerSystemInput): Dados do sistema elétrico no formato JSON
+        data (dict): Dados do sistema elétrico no formato MATPOWER
         
     Returns:
         PowerSystemResult: Resultados da simulação do fluxo de potência
     """
     try:
+        # Converter dados do formato MATPOWER para PowerSystemInput
+        parsed_system = matpower_to_power_system_input(data)
+        
         # Verificar se tem barra slack
-        has_slack = any(bus.type == 3 for bus in system.buses)
+        has_slack = any(bus.type == 3 for bus in parsed_system.buses)
         if not has_slack:
             raise ValueError("O sistema deve ter uma barra slack (type=3)")
-            
-        # Verificar se cargas estão corretas
-        for bus in system.buses:
-            if bus.Pd != 0 or bus.Qd != 0:
-                # Adicionar carga da barra à lista de cargas
-                system.loads.append(Load(
-                    bus=bus.id,
-                    p_mw=bus.Pd,
-                    q_mvar=bus.Qd,
-                    scaling=1.0,
-                    in_service=True
-                ))
-                
-        # Configurar ext_grid para a barra slack se não existir
-        if system.ext_grid is None:
-            slack_bus = next(bus.id for bus in system.buses if bus.type == 3)
-            slack_gen = next((gen for gen in system.generators if gen.bus == slack_bus), None)
-            
-            if slack_gen:
-                system.ext_grid = ExtGrid(
-                    bus=slack_bus,
-                    vm_pu=slack_gen.Vg,
-                    va_degree=0.0,
-                    in_service=bool(slack_gen.status)
-                )
-            else:
-                slack_bus_data = next(bus for bus in system.buses if bus.type == 3)
-                system.ext_grid = ExtGrid(
-                    bus=slack_bus_data.id,
-                    vm_pu=slack_bus_data.Vm,
-                    va_degree=slack_bus_data.Va,
-                    in_service=True
-                )
-                
-        return simulate_power_flow(system)
+
+        return simulate_power_flow(parsed_system)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
