@@ -1,10 +1,10 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 class BusResult(BaseModel):
     bus_id: int
-    vm_pu: float
-    va_degree: float
+    vm_pu: float  # Mudado de Vm para vm_pu para manter consistência
+    va_degree: float  # Mudado de Va para va_degree para manter consistência
     p_mw: float
     q_mvar: float
 
@@ -31,7 +31,7 @@ class GeneratorResult(BaseModel):
     bus_id: int
     p_mw: float
     q_mvar: float
-    vm_pu: float
+    vm_pu: float  # Mudado de Vm para vm_pu
     in_service: bool
 
 class ExtGridResult(BaseModel):
@@ -42,6 +42,6 @@ class ExtGridResult(BaseModel):
 class PowerSystemResult(BaseModel):
     buses: List[BusResult]
     lines: List[LineResult]
-    loads: List[LoadResult]
-    generators: List[GeneratorResult]
-    ext_grid: ExtGridResult
+    loads: Optional[List[LoadResult]] = []
+    generators: Optional[List[GeneratorResult]] = []
+    ext_grid: Optional[ExtGridResult] = None

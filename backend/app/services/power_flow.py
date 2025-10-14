@@ -1,8 +1,6 @@
 import pandapower as pp
 import numpy as np
-from app.models.power_system_input import (
-    PowerSystemInput, Bus, Load, Generator, ExtGrid, Line
-)
+from app.models.power_system_input import PowerSystemInput
 from app.models.power_system_results import (
     PowerSystemResult, BusResult, LineResult, 
     LoadResult, GeneratorResult, ExtGridResult
@@ -16,6 +14,8 @@ def simulate_power_flow(system: PowerSystemInput) -> PowerSystemResult:
         
         # Mapear IDs das barras
         bus_indices = {}
+        loads = []  # Lista para armazenar as cargas das barras
+        ext_grid = None  # Referência para a barra slack
         
         # Adicionar barras
         for bus in system.buses:
@@ -23,42 +23,49 @@ def simulate_power_flow(system: PowerSystemInput) -> PowerSystemResult:
                 net,
                 vn_kv=bus.base_kv,
                 min_vm_pu=bus.vm_min,
-                max_vm_pu=bus.vm_max
+                max_vm_pu=bus.vm_max,
+                zone=bus.zone,
+                type=bus.type
             )
             bus_indices[bus.id] = idx
+            
+            # Adicionar cargas das barras
+            if bus.Pd != 0 or bus.Qd != 0:
+                pp.create_load(
+                    net,
+                    bus=idx,
+                    p_mw=bus.Pd,
+                    q_mvar=bus.Qd,
+                    in_service=True
+                )
         
-        # Adicionar cargas
-        for load in system.loads:
-            pp.create_load(
-                net,
-                bus=bus_indices[load.bus],
-                p_mw=load.p_mw,
-                q_mvar=load.q_mvar,
-                scaling=load.scaling,
-                in_service=load.in_service
-            )
-        
+        # As cargas já foram adicionadas junto com as barras
         # Adicionar geradores
-        for gen in system.generators:
-            pp.create_gen(
-                net,
-                bus=bus_indices[gen.bus],
-                p_mw=gen.p_mw,
-                vm_pu=gen.vm_pu,
-                scaling=gen.scaling,
-                in_service=gen.in_service,
-                max_q_mvar=gen.max_q_mvar,
-                min_q_mvar=gen.min_q_mvar
-            )
+        slack_bus = next((bus.id for bus in system.buses if bus.type == 3), None)
         
-        # Adicionar barra slack
-        pp.create_ext_grid(
-            net,
-            bus=bus_indices[system.ext_grid.bus],
-            vm_pu=system.ext_grid.vm_pu,
-            va_degree=system.ext_grid.va_degree,
-            in_service=system.ext_grid.in_service
-        )
+        for gen in system.generators:
+            if gen.bus == slack_bus:
+                # Se for o gerador da barra slack, criar como ext_grid
+                pp.create_ext_grid(
+                    net,
+                    bus=bus_indices[gen.bus],
+                    vm_pu=gen.Vg,
+                    va_degree=0.0,  # Ângulo de referência
+                    in_service=bool(gen.status)
+                )
+            else:
+                # Outros geradores como PV
+                pp.create_gen(
+                    net,
+                    bus=bus_indices[gen.bus],
+                    p_mw=gen.pg,
+                    vm_pu=gen.Vg,
+                    max_q_mvar=gen.qmax,
+                    min_q_mvar=gen.qmin,
+                    in_service=bool(gen.status)
+                )
+        
+        # A barra slack já foi adicionada no processamento dos geradores
         
         # Adicionar linhas
         for line in system.lines:
@@ -78,12 +85,12 @@ def simulate_power_flow(system: PowerSystemInput) -> PowerSystemResult:
         pp.runpp(net)
         
         # Preparar resultados
-        return PowerSystemResult(
+        result = PowerSystemResult(
             buses=[
                 BusResult(
-                    bus_id=list(bus_indices.keys())[list(bus_indices.values()).index(i)],
-                    vm_pu=float(net.res_bus.vm_pu[i]),
-                    va_degree=float(net.res_bus.va_degree[i]),
+                    bus_id=i+1,
+                    vm_pu=float(net.res_bus.vm_pu[i]),  # Ajustado nome
+                    va_degree=float(net.res_bus.va_degree[i]),  # Ajustado nome
                     p_mw=float(net.res_bus.p_mw[i]),
                     q_mvar=float(net.res_bus.q_mvar[i])
                 )
@@ -91,8 +98,8 @@ def simulate_power_flow(system: PowerSystemInput) -> PowerSystemResult:
             ],
             lines=[
                 LineResult(
-                    from_bus=list(bus_indices.keys())[list(bus_indices.values()).index(int(net.line.from_bus[i]))],
-                    to_bus=list(bus_indices.keys())[list(bus_indices.values()).index(int(net.line.to_bus[i]))],
+                    from_bus=int(net.line.from_bus[i]) + 1,
+                    to_bus=int(net.line.to_bus[i]) + 1,
                     p_from_mw=float(net.res_line.p_from_mw[i]),
                     q_from_mvar=float(net.res_line.q_from_mvar[i]),
                     p_to_mw=float(net.res_line.p_to_mw[i]),
@@ -101,31 +108,31 @@ def simulate_power_flow(system: PowerSystemInput) -> PowerSystemResult:
                     ql_mvar=float(net.res_line.ql_mvar[i]),
                     i_ka=float(net.res_line.i_ka[i]),
                     loading_percent=float(net.res_line.loading_percent[i]),
-                    in_service=bool(net.line.in_service[i])
+                    status=int(net.line.in_service[i])
                 )
                 for i in range(len(net.line))
             ],
             loads=[
                 LoadResult(
-                    bus_id=list(bus_indices.keys())[list(bus_indices.values()).index(int(net.load.bus[i]))],
+                    bus_id=int(net.load.bus[i]) + 1,
                     p_mw=float(net.res_load.p_mw[i]),
                     q_mvar=float(net.res_load.q_mvar[i]),
                     scaling=float(net.load.scaling[i])
                 )
                 for i in range(len(net.load))
-            ],
+            ] if len(net.load) > 0 else [],
             generators=[
                 GeneratorResult(
-                    bus_id=list(bus_indices.keys())[list(bus_indices.values()).index(int(net.gen.bus[i]))],
+                    bus_id=int(net.gen.bus[i]) + 1,
                     p_mw=float(net.res_gen.p_mw[i]),
                     q_mvar=float(net.res_gen.q_mvar[i]),
-                    vm_pu=float(net.gen.vm_pu[i]),
+                    vm_pu=float(net.gen.vm_pu[i]),  # Ajustado nome
                     in_service=bool(net.gen.in_service[i])
                 )
                 for i in range(len(net.gen))
-            ],
+            ] if len(net.gen) > 0 else [],
             ext_grid=ExtGridResult(
-                bus_id=list(bus_indices.keys())[list(bus_indices.values()).index(int(net.ext_grid.bus[0]))],
+                bus_id=int(net.ext_grid.bus[0]) + 1,
                 p_mw=float(net.res_ext_grid.p_mw[0]),
                 q_mvar=float(net.res_ext_grid.q_mvar[0])
             )

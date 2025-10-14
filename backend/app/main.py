@@ -3,70 +3,86 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.openapi.utils import get_openapi
 from app.routes.simulation_routes import router as simulation_router
-from app.models.power_system_input import PowerSystemInput
-from app.models.power_system_results import PowerSystemResult
 
-app = FastAPI(
-    title="Simulador de Sistemas de Potência",
-    description="API para simulação de fluxo de potência utilizando pandapower.",
-    version="1.0.0"
-)
-
-# Configuração de CORS
-origins = [
-    "http://localhost",
-    "http://localhost:3000",  # Frontend React padrão
-    "http://localhost:8000",  # Backend durante desenvolvimento
-    "*"  # Permitir todos durante desenvolvimento
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["*"],
-)
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    print(f"Global error handler: {str(exc)}")  # Debug logging
-    return JSONResponse(
-        status_code=500,
-        content={"detail": str(exc)}
+def create_app():
+    app = FastAPI(
+        title="Sistema de Simulação de Fluxo de Potência",
+        description="""
+        API para simulação de fluxo de potência utilizando pandapower.
+        
+        Funcionalidades:
+        * Simulação de fluxo de potência
+        * Suporte a arquivos MATPOWER
+        * Análise de resultados
+        """,
+        version="1.0.0",
     )
 
-app.include_router(
-    simulation_router,
-    prefix="/simulate",
-    tags=["Simulação de Fluxo de Potência"]
-)
+    # Configurar CORS
+    origins = [
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "*",
+    ]
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Incluir rotas
+    app.include_router(simulation_router, prefix="/sip", tags=["Simulação"])
+
+    return app
+
+app = create_app()
 
 @app.get("/", tags=["Root"])
 async def read_root():
     """
-    Rota raiz para verificar se a API está funcionando.
+    Rota raiz para verificar se a API está funcionando
     """
     return {
-        "message": "Simulador de Fluxo de Potência ativo",
+        "message": "Sistema de Simulação de Fluxo de Potência",
         "version": app.version,
-        "docs_url": "/docs",
-        "redoc_url": "/redoc"
+        "docs": "/docs",
+        "redoc": "/redoc"
     }
 
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
-    
+
     openapi_schema = get_openapi(
         title=app.title,
         version=app.version,
         description=app.description,
         routes=app.routes,
     )
-    
+
+    # Customizar o schema OpenAPI
+    openapi_schema["info"]["x-logo"] = {
+        "url": "https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png"
+    }
+
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
 app.openapi = custom_openapi
+
+# Manipulador de exceções global
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc)},
+    )
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -11,3 +11,4 @@ lxml
 beautifulsoup4
 matpowercaseframes
 numba
+python-multipart
