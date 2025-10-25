@@ -1,49 +1,105 @@
 "use client";
 import { useState } from "react";
 import styles from "./styles.module.css";
-import Header from "./components/Header";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 import Footer from "./components/Footer";
-import BusCard from "./components/BusCard";
-import TransmissionCard from "./components/TransmissionCard";
-import SimulationResult from "./components/SimulationResult";
 
 export default function Simulator() {
-  const [showSimulation, setShowSimulation] = useState(false);
+  const [selectedFile, setSelectedFile] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+
+  const handleSimulation = async () => {
+    if (!selectedFile) {
+      alert("Por favor selecione um modelo para simular");
+      return;
+    }
+
+    if (selectedFile === "numeric") {
+      router.push("/simulator/numeric");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch("http://localhost:8000/simulate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          filename: selectedFile,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Erro na simulação");
+      }
+
+      router.push(`/simulator/result?file=${selectedFile}`);
+    } catch (error) {
+      console.error("Erro na simulação:", error);
+      alert("Erro ao executar a simulação");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className={styles.container}>
-      <Header onSimulate={() => setShowSimulation(true)} />
-      <main className={styles.main}>
-        {!showSimulation ? (
-          <>
-            {/* Seção de Buses */}
-            <section className={styles.busSection}>
-              <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>Barras</h2>
-                <button className={styles.addButton}>+</button>
-              </div>
-              <div className={styles.areaCard}>
-                <BusCard id={1} voltage={1.0} shunt={0.02} values={[]} onEdit={() => {}} />
-              </div>
-              {/* Adicione mais cards de barras conforme necessário */}
-            </section>
+      <Image
+        src="/transmission-lines.jpg"
+        alt="Transmission Lines Background"
+        fill
+        priority
+        className={styles.backgroundImage}
+      />
+      <div className={styles.overlay} />
+      
+      <header className={styles.header}>
+        <div className={styles.headerContent}>
+          <Image
+            src="/univali-logo.png"
+            alt="UNIVALI Logo"
+            width={80}
+            height={80}
+            className={styles.logo}
+          />
+          <h1 className={styles.headerTitle}>SIMULADOR ITERATIVO DE POTÊNCIA - SIP</h1>
+        </div>
+      </header>
 
-            {/* Seção de Transmission Lines */}
-            <section className={styles.transmissionSection}>
-              <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>Linhas de Transmissão</h2>
-                <button className={styles.addButton}>+</button>
-              </div>
-              <div className={styles.areaCard}>
-                <TransmissionCard id={1} name="Linha 1" impedance="-0.05 + j0.02" />
-              </div>
-              {/* Adicione mais cards de transmissão conforme necessário */}
-            </section>
-          </>
-        ) : (
-          <SimulationResult onBack={() => setShowSimulation(false)} />
-        )}
+      <main className={styles.mainContent}>
+        <div className={styles.formContainer}>
+          <div className={styles.selectContainer}>
+            <select
+              className={styles.select}
+              value={selectedFile}
+              onChange={(e) => setSelectedFile(e.target.value)}
+            >
+              <option value="">Selecione um modelo do sistema</option>
+              <option value="case3p.m">Sistema de 3 Barras</option>
+              <option value="case4gs.m">Sistema de 4 Barras</option>
+              <option value="case5">Sistema de 5 Barras</option>
+              <option value="case6ww.m">Sistema de 6 Barras</option>
+              <option value="case9.m">Sistema de 9 Barras</option>
+              <option value="case14.m">Sistema de 14 Barras</option>
+              <option value="numeric">Modelo com entrada/saída numérica</option>
+            </select>
+          </div>
+          <div className={styles.buttonContainer}>
+            <button
+              className={styles.simulateButton}
+              onClick={handleSimulation}
+              disabled={!selectedFile || isLoading}
+            >
+              SIMULAR
+            </button>
+          </div>
+        </div>
       </main>
+
       <Footer />
     </div>
   );
