@@ -265,6 +265,66 @@
   color: #000;
 }
 
+/* Estilos para a página de sistema */
+
+.systemPage .header {
+  min-height: 70px;
+  padding: 1.5rem 2rem;
+}
+
+.systemPage .headerTitle {
+  font-size: 1.5rem;
+}
+
+.systemPage .logo {
+  width: 50px;
+  height: 50px;
+}
+
+.systemPage .overlay {
+  background: rgba(240, 240, 240, 0.9);
+}
+
+.systemPage .backgroundImage {
+  opacity: 0.1;
+}
+
+.systemPage .contentContainer {
+  max-width: 1400px;
+  padding: 0 1rem;
+}
+
+.systemPage .actions {
+  width: 100%;
+  max-width: 1400px;
+  padding: 1.6rem 1rem 1.6rem 0rem ;
+  margin: 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.systemPage .footer {
+  min-height: 30px;
+  padding: 0.4rem;
+  font-size: 0.875rem;
+}
+
+.systemTitle {
+  font-size: 1.25rem;
+  color: #000;
+  padding: 1rem 0rem;
+}
+
+.systemDiagram {
+  width: 100%;
+  height: 100%;
+  min-height: 480px;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
+}
+
 .textArea {
   width: 100%;
   height: 100%;

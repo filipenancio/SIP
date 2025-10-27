@@ -10,7 +10,7 @@ export default function Simulator() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const handleSimulation = async () => {
+  const handleSimulation = () => {
     if (!selectedFile) {
       alert("Por favor selecione um modelo para simular");
       return;
@@ -21,29 +21,7 @@ export default function Simulator() {
       return;
     }
 
-    setIsLoading(true);
-    try {
-      const response = await fetch("http://localhost:8000/simulate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          filename: selectedFile,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Erro na simulação");
-      }
-
-      router.push(`/simulator/result?file=${selectedFile}`);
-    } catch (error) {
-      console.error("Erro na simulação:", error);
-      alert("Erro ao executar a simulação");
-    } finally {
-      setIsLoading(false);
-    }
+    router.push(`/simulator/system?system=${selectedFile}`);
   };
 
   return (
