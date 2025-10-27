@@ -22,7 +22,7 @@ export default function NumericModel() {
   };
 
   return (
-    <div className={styles.container}>
+    <div className={`${styles.container} ${styles.numericPage}`}>
       <Image
         src="/transmission-lines.jpg"
         alt="Transmission Lines Background"
@@ -42,7 +42,7 @@ export default function NumericModel() {
             className={styles.logo}
           />
           <h1 className={styles.headerTitle}>
-            MODELO ENTRADA / SAÍDA NUMÉRICA
+            Modelo numérico - SIP
           </h1>
         </div>
       </header>
@@ -51,7 +51,7 @@ export default function NumericModel() {
         <div className={styles.contentContainer}>
           <div className={styles.sections}>
             <div className={styles.section}>
-              <h2 className={styles.sectionTitle}>ENTRADA</h2>
+              <h2 className={styles.sectionTitle}>Entrada</h2>
               <textarea
                 className={styles.textArea}
                 placeholder="Digite o modelo no formato MATPOWER..."
@@ -59,7 +59,7 @@ export default function NumericModel() {
               />
             </div>
             <div className={styles.section}>
-              <h2 className={styles.sectionTitle}>SAÍDA</h2>
+              <h2 className={styles.sectionTitle}>Saída</h2>
               <div className={styles.outputArea}>
                 {/* Área para resultado da simulação */}
               </div>

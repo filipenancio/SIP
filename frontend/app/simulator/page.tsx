@@ -66,7 +66,7 @@ export default function Simulator() {
             height={80}
             className={styles.logo}
           />
-          <h1 className={styles.headerTitle}>SIMULADOR ITERATIVO DE POTÊNCIA - SIP</h1>
+          <h1 className={styles.headerTitle}>Simulador Iterativo de Potência - SIP</h1>
         </div>
       </header>
 
