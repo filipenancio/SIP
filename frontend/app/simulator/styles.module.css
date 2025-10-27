@@ -410,3 +410,39 @@
     min-width: 100%;
   }
 }
+
+/* Estilos específicos para a página System - Sobrescrevendo comportamentos dos botões */
+.systemPage .actions {
+  position: relative;
+  z-index: 10;
+}
+
+.systemPage .backButton {
+  background-color: #666 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 2px !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 20 !important;
+}
+
+.systemPage .backButton:hover {
+  background-color: #888 !important;
+}
+
+.systemPage .simulateButton {
+  background-color: #003366 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 2px !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 20 !important;
+}
+
+.systemPage .simulateButton:hover {
+  background-color: #004b8d !important;
+}
