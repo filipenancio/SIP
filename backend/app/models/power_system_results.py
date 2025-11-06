@@ -17,7 +17,13 @@ class LineResult(BaseModel):
     q_to_mvar: float
     pl_mw: float
     ql_mvar: float
+    i_from_ka: float
+    i_to_ka: float
     i_ka: float
+    vm_from_pu: float
+    va_from_degree: float
+    vm_to_pu: float
+    va_to_degree: float
     loading_percent: float
     in_service: bool
 
