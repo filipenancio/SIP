@@ -9,7 +9,7 @@ matpower_service = MatpowerService()
 @router.get("/matpower/files", response_model=List[str])
 async def list_matpower_files():
     """
-    Lista todos os arquivos MATPOWER disponíveis no sistema.
+    Lista todos os modelos do MATPOWER disponíveis no sistema.
     
     Returns:
         List[str]: Lista de nomes dos arquivos .m disponíveis
@@ -27,8 +27,8 @@ async def list_matpower_files():
 async def simulate_matpower_filename(
     filename: str = Path(
         ..., 
-        description="Nome do arquivo MATPOWER (ex: case3p.m, case4gs.m, case5.m, case6ww.m, case9.m, case14.m)",
-        examples={"default": {"value": "case3p.m"}}
+        description="Nome do arquivo MATPOWER (ex: case4gs.m, case5.m, case6ww.m, case9.m, case14.m)",
+        examples={"default": {"value": "case4gs.m"}}
     )
 ):
     """

@@ -6,7 +6,7 @@ from typing import List
 
 class MatpowerService:
     # Constante para controlar prints de debug
-    DEBUG_ENABLED = True  # Altere para False para desabilitar prints de debug
+    DEBUG_ENABLED = False  # Altere para False para desabilitar prints de debug
     
     def __init__(self):
         # Caminho para o diretório data no backend

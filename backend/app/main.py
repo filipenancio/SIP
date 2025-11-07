@@ -8,14 +8,13 @@ from app.routes.simulation_routes import router as simulation_router
 
 def create_app():
     app = FastAPI(
-        title="Sistema de Simulação de Fluxo de Potência",
+        title="Simulador de Fluxo de Potência - SIFP",
         description="""
-        API para simulação de fluxo de potência utilizando pandapower.
+        API desenvolvida para simulação de fluxo de potência utilizando pandapower e modelos MATPOWER.
         
         Funcionalidades:
         * Simulação de fluxo de potência
         * Suporte a arquivos MATPOWER
-        * Análise de resultados
         """,
         version="1.0.0",
     )
