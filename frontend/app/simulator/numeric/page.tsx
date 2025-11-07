@@ -22,7 +22,7 @@ export default function NumericModel() {
     
     // Cabeçalho do sistema
     formattedOutput += "=========================================================================================\n";
-    formattedOutput += "|                               SIFP - Power Flow Results                               |\n";
+    formattedOutput += "|                         SIFP - Resultado do Fluxo de Potência                         |\n";
     formattedOutput += "=========================================================================================\n\n";
 
     // Sistema Summary
@@ -31,37 +31,42 @@ export default function NumericModel() {
     const totalLoads = result.loads?.length || 0;
     const totalLines = result.lines?.length || 0;
 
-    // Cálculos de resumo
+    // Cálculos de resumo corrigidos conforme resultado esperado
     let totalGeneration = 0;
+    let totalGenerationQ = 0;
     let totalLoad = 0;
+    let totalLoadQ = 0;
     let totalLosses = 0;
+    let totalLossesQ = 0;
 
     if (result.generators) {
       totalGeneration = result.generators.reduce((sum: number, gen: any) => sum + gen.p_mw, 0);
+      totalGenerationQ = result.generators.reduce((sum: number, gen: any) => sum + gen.q_mvar, 0);
     }
     if (result.ext_grid) {
       totalGeneration += result.ext_grid.p_mw;
+      totalGenerationQ += result.ext_grid.q_mvar;
     }
     
     if (result.loads) {
       totalLoad = result.loads.reduce((sum: number, load: any) => sum + load.p_mw, 0);
+      totalLoadQ = result.loads.reduce((sum: number, load: any) => sum + load.q_mvar, 0);
     }
 
     if (result.lines) {
       totalLosses = result.lines.reduce((sum: number, line: any) => sum + (line.pl_mw || 0), 0);
+      totalLossesQ = result.lines.reduce((sum: number, line: any) => sum + (line.ql_mvar || 0), 0);
     }
 
     // Tabela de resumo do sistema
-    formattedOutput += "System Summary\n";
-    formattedOutput += "-------------------- ------------------- ------------ ----------------\n";
-    formattedOutput += `Buses             ${totalBuses.toString().padStart(3)}  Total Capacity      ${totalGeneration.toFixed(1).padStart(8)}\n`;
-    formattedOutput += `Generators        ${totalGenerators.toString().padStart(3)}  On-line Capacity    ${totalGeneration.toFixed(1).padStart(8)}\n`;
-    formattedOutput += `Committed Gens    ${totalGenerators.toString().padStart(3)}  Generation (actual) ${totalGeneration.toFixed(1).padStart(8)}\n`;
-    formattedOutput += `Loads             ${totalLoads.toString().padStart(3)}  Load                ${totalLoad.toFixed(1).padStart(8)}\n`;
-    formattedOutput += `  Fixed           ${totalLoads.toString().padStart(3)}    Fixed             ${totalLoad.toFixed(1).padStart(8)}\n`;
-    formattedOutput += `Branches          ${totalLines.toString().padStart(3)}  Losses (I^2 * Z)    ${totalLosses.toFixed(2).padStart(8)}\n`;
-    formattedOutput += `Transformers      0  Branch Charging     0.0\n`;
-    formattedOutput += `Inter-ties        0  Total Inter-tie Flow 0.0\n\n`;
+    formattedOutput += "  Resumo do sistema\n";
+    formattedOutput += "=========================================================================================\n";
+    formattedOutput += "  Quantos?                    Quanto?            P (MW)            Q (MVAr)\n";
+    formattedOutput += "  -----------  ---    -----------------------  ---------- ------------------------\n";
+    formattedOutput += `  Barras       ${totalBuses.toString().padStart(3)}    Capacidade de Geração    ${(result.genCapacityP).toFixed(2).padStart(10)} ${(result.genCapacityQmin).toFixed(2).padStart(10)} to ${(result.genCapacityQmax).toFixed(2).padStart(10)}\n`;
+    formattedOutput += `   Geradores   ${(totalGenerators + (result.ext_grid ? 1 : 0)).toString().padStart(3)}    Potência Gerada          ${totalGeneration.toFixed(2).padStart(10)} ${(totalGenerationQ).toFixed(2).padStart(10)}\n`;
+    formattedOutput += `   Cargas      ${totalLoads.toString().padStart(3)}    Carga Total do Sistema   ${(result.loadSystemP).toFixed(2).padStart(10)} ${(result.loadSystemQ).toFixed(2).padStart(10)}\n`;
+    formattedOutput += `  Linhas       ${totalLines.toString().padStart(3)}    Total de Perdas          ${totalLosses.toFixed(2).padStart(10)} ${(totalLossesQ).toFixed(2).padStart(10)}\n`;
 
     // Voltage Magnitude e Angle extremos
     let minVm = 999, maxVm = 0, minVa = 999, maxVa = -999;
@@ -74,10 +79,36 @@ export default function NumericModel() {
       if (bus.va_degree > maxVa) { maxVa = bus.va_degree; maxVaBus = index + 1; }
     });
 
-    formattedOutput += "                        Minimum                      Maximum\n";
-    formattedOutput += "                    -------------------- -------------------------\n";
-    formattedOutput += `Voltage Magnitude   ${minVm.toFixed(3)} p.u. @ bus ${minVmBus}     ${maxVm.toFixed(3)} p.u. @ bus ${maxVmBus}\n`;
-    formattedOutput += `Voltage Angle       ${minVa.toFixed(2)} deg @ bus ${minVaBus}     ${maxVa.toFixed(2)} deg @ bus ${maxVaBus}\n\n`;
+    // Encontrar linha com maior perda ativa e reativa
+    let maxPLoss = 0, maxQLoss = 0;
+    let maxPLossLine = "N/A", maxQLossLine = "N/A";
+    
+    if (result.lines && result.lines.length > 0) {
+      result.lines.forEach((line: any, index: number) => {
+        const pLoss = Math.abs(line.pl_mw || 0);
+        const qLoss = Math.abs(line.ql_mvar || 0);
+        let lineBus = `${(line.from_bus + 1)}-${(line.to_bus + 1)}`;
+        const lineName = `linha ${lineBus.toString().padStart(7)}`;
+        
+        if (pLoss > maxPLoss) {
+          maxPLoss = pLoss;
+          maxPLossLine = lineName;
+        }
+        
+        if (qLoss > maxQLoss) {
+          maxQLoss = qLoss;
+          maxQLossLine = lineName;
+        }
+      });
+    }
+
+    formattedOutput += "\n\n";
+    formattedOutput += "                                Mínimo                         Máximo\n";
+    formattedOutput += "                     ----------------------------   ----------------------------\n";
+    formattedOutput += `  Tensão (pu)           ${minVm.toFixed(3).padStart(8)} p.u. @ barra ${minVmBus.toString().padStart(3)}      ${maxVm.toFixed(3).padStart(8)} p.u. @ barra ${maxVmBus.toString().padStart(3)}\n`;
+    formattedOutput += `  Tensão Ângulo         ${minVa.toFixed(3).padStart(8)} deg  @ barra ${minVaBus.toString().padStart(3)}      ${maxVa.toFixed(3).padStart(8)} deg  @ barra ${maxVaBus.toString().padStart(3)}\n`;
+    formattedOutput += `  Perdas Ativas                    -               ${maxPLoss.toFixed(2).padStart(8)} MW   @ ${maxPLossLine}\n`;
+    formattedOutput += `  Perdas Reativa                   -               ${maxQLoss.toFixed(2).padStart(8)} MVAr @ ${maxQLossLine}\n\n`;
 
     // Dados das barras
     formattedOutput += "=========================================================================================\n";

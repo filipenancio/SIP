@@ -51,3 +51,8 @@ class PowerSystemResult(BaseModel):
     loads: Optional[List[LoadResult]] = []
     generators: Optional[List[GeneratorResult]] = []
     ext_grid: Optional[ExtGridResult] = None
+    genCapacityP: Optional[float] = 0.0      # Capacidade total dos geradores - Potência Ativa (P_max)
+    genCapacityQmin: Optional[float] = 0.0   # Capacidade total dos geradores - Potência Reativa Mínima (Q_min)
+    genCapacityQmax: Optional[float] = 0.0   # Capacidade total dos geradores - Potência Reativa Máxima (Q_max)
+    loadSystemP: Optional[float] = 0.0       # Carga total ativa do sistema (P)
+    loadSystemQ: Optional[float] = 0.0       # Carga total reativa do sistema (Q)

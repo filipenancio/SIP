@@ -6,7 +6,7 @@ from typing import List
 
 class MatpowerService:
     # Constante para controlar prints de debug
-    DEBUG_ENABLED = False  # Altere para False para desabilitar prints de debug
+    DEBUG_ENABLED = True  # Altere para False para desabilitar prints de debug
     
     def __init__(self):
         # Caminho para o diretório data no backend
@@ -101,16 +101,14 @@ class MatpowerService:
                 warnings.filterwarnings("ignore", category=FutureWarning, module="pandapower")
                 
                 self._debug_print("Iniciando simulação...")
-                pp.runpp(net, algorithm='nr')
+                pp.runpp(net)
                 self._debug_print("Simulação concluída com sucesso")
                 
                 # Print adicional para debug imediato no console
                 self._debug_print("=== DEBUG NET VARIABLE ===")
                 self._debug_print(f"Bus count: {len(net.bus)}")
                 self._debug_print(f"Line count: {len(net.line) if hasattr(net, 'line') else 0}")
-                self._debug_print(f"Load count: {len(net.load) if hasattr(net, 'load') else 0}")
                 self._debug_print(f"Gen count: {len(net.gen) if hasattr(net, 'gen') else 0}")
-                self._debug_print(f"Bus results shape: {net.res_bus.shape if hasattr(net, 'res_bus') else 'No res_bus'}")
                 if hasattr(net, 'res_bus'):
                     self._debug_print(f"Bus results columns: {list(net.res_bus.columns)}")
                     self._debug_print("Bus results sample:")
@@ -230,10 +228,56 @@ class MatpowerService:
         
         self._debug_print("Conversão de resultados concluída com sucesso")
         
+        # Calcular capacidade total dos geradores (P_max e Q_max)
+        gen_capacity_p = 0.0
+        gen_capacity_qmin = 0.0
+        gen_capacity_qmax = 0.0
+
+        if hasattr(net, 'gen') and len(net.gen) > 0:
+            self._debug_print(f"Colunas disponíveis em gen: {list(net.gen.columns)}")
+
+            # Usar métodos do pandas para somar diretamente (mais eficiente)
+            if 'max_p_mw' in net.gen.columns:
+                gen_capacity_p = float(net.gen.max_p_mw.sum())
+                self._debug_print(f"P_max total encontrado: {gen_capacity_p} MW")
+
+            if 'min_q_mvar' in net.gen.columns:
+                gen_capacity_qmin = float(net.gen.min_q_mvar.sum())
+                self._debug_print(f"Q_min total encontrado: {gen_capacity_qmin} MVAr")
+
+            if 'max_q_mvar' in net.gen.columns:
+                gen_capacity_qmax = float(net.gen.max_q_mvar.sum())
+                self._debug_print(f"Q_max total encontrado: {gen_capacity_qmax} MVAr")
+
+            self._debug_print(f"Capacidade total dos geradores: P={gen_capacity_p} MW, Qmin={gen_capacity_qmin} MVAr, Qmax={gen_capacity_qmax} MVAr")
+
+        # Incluir ext_grid na capacidade se existir
+        if hasattr(net, 'ext_grid') and len(net.ext_grid) > 0:
+            self._debug_print(f"Colunas disponíveis em ext_grid: {list(net.ext_grid.columns)}")
+            gen_capacity_p += net.ext_grid['max_p_mw'].sum() if 'max_p_mw' in net.ext_grid.columns else 0.0
+            gen_capacity_qmin += net.ext_grid['min_q_mvar'].sum() if 'min_q_mvar' in net.ext_grid.columns else 0.0
+            gen_capacity_qmax += net.ext_grid['max_q_mvar'].sum() if 'max_q_mvar' in net.ext_grid.columns else 0.0
+            self._debug_print(f"Adicionando capacidade da ext_grid: P={net.ext_grid['max_p_mw'].sum()} MW, Q={net.ext_grid['max_q_mvar'].sum()} MVAr")
+
+        # Calcular carga total ativa e reativa do sistema
+        load_system_p = 0.0
+        load_system_q = 0.0
+        if hasattr(net, 'load') and len(net.load) > 0:
+            load_system_p = float(net.load.p_mw.sum())
+            load_system_q = float(net.load.q_mvar.sum())
+
+        self._debug_print(f"Capacidade total dos geradores: P={gen_capacity_p} MW, Qmin={gen_capacity_qmin} MVAr, Qmax={gen_capacity_qmax} MVAr")
+        self._debug_print(f"Carga total do sistema: P={load_system_p} MW, Q={load_system_q} MVAr")
+        
         return PowerSystemResult(
             buses=buses,
             lines=lines,
             loads=loads,
             generators=generators,
-            ext_grid=ext_grid
+            ext_grid=ext_grid,
+            genCapacityP=gen_capacity_p,
+            genCapacityQmin=gen_capacity_qmin,
+            genCapacityQmax=gen_capacity_qmax,
+            loadSystemP=load_system_p,
+            loadSystemQ=load_system_q
         )
