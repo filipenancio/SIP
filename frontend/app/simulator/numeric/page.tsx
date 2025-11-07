@@ -33,9 +33,7 @@ export default function NumericModel() {
 
     // Cálculos de resumo corrigidos conforme resultado esperado
     let totalGeneration = 0;
-    let totalGenerationQ = 0;
-    let totalLoad = 0;
-    let totalLoadQ = 0;
+    let totalGenerationQ = 0;    
     let totalLosses = 0;
     let totalLossesQ = 0;
 
@@ -46,11 +44,6 @@ export default function NumericModel() {
     if (result.ext_grid) {
       totalGeneration += result.ext_grid.p_mw;
       totalGenerationQ += result.ext_grid.q_mvar;
-    }
-    
-    if (result.loads) {
-      totalLoad = result.loads.reduce((sum: number, load: any) => sum + load.p_mw, 0);
-      totalLoadQ = result.loads.reduce((sum: number, load: any) => sum + load.q_mvar, 0);
     }
 
     if (result.lines) {
@@ -107,8 +100,8 @@ export default function NumericModel() {
     formattedOutput += "                     ----------------------------   ----------------------------\n";
     formattedOutput += `  Tensão (pu)           ${minVm.toFixed(3).padStart(8)} p.u. @ barra ${minVmBus.toString().padStart(3)}      ${maxVm.toFixed(3).padStart(8)} p.u. @ barra ${maxVmBus.toString().padStart(3)}\n`;
     formattedOutput += `  Tensão Ângulo         ${minVa.toFixed(3).padStart(8)} deg  @ barra ${minVaBus.toString().padStart(3)}      ${maxVa.toFixed(3).padStart(8)} deg  @ barra ${maxVaBus.toString().padStart(3)}\n`;
-    formattedOutput += `  Perdas Ativas                    -               ${maxPLoss.toFixed(2).padStart(8)} MW   @ ${maxPLossLine}\n`;
-    formattedOutput += `  Perdas Reativa                   -               ${maxQLoss.toFixed(2).padStart(8)} MVAr @ ${maxQLossLine}\n\n`;
+    formattedOutput += `  Perdas Ativas                    -             ${maxPLoss.toFixed(3).padStart(10)} MW   @ ${maxPLossLine}\n`;
+    formattedOutput += `  Perdas Reativa                   -             ${maxQLoss.toFixed(3).padStart(10)} MVAr @ ${maxQLossLine}\n\n`;
 
     // Dados das barras
     formattedOutput += "=========================================================================================\n";
@@ -156,7 +149,7 @@ export default function NumericModel() {
     });
 
     formattedOutput += "                                        --------   --------       --------   --------\n";
-    formattedOutput += `                            Total:      ${totalGeneration.toFixed(2).padStart(8)}   ${(result.generators?.reduce((sum: number, gen: any) => sum + gen.q_mvar, 0) || 0).toFixed(2).padStart(8)}       ${totalLoad.toFixed(2).padStart(8)}   ${(result.loads?.reduce((sum: number, load: any) => sum + load.q_mvar, 0) || 0).toFixed(2).padStart(8)}\n\n`;
+    formattedOutput += `                            Total:      ${totalGeneration.toFixed(2).padStart(8)}   ${(result.generators?.reduce((sum: number, gen: any) => sum + gen.q_mvar, 0) || 0).toFixed(2).padStart(8)}       ${result.loadSystemP.toFixed(2).padStart(8)}   ${result.loadSystemQ.toFixed(2).padStart(8)}\n\n`;
 
     // Dados das linhas
     formattedOutput += "=========================================================================================\n";
@@ -175,8 +168,8 @@ export default function NumericModel() {
       
       const pFrom = line.p_from_mw.toFixed(2).padStart(8);
       const qFrom = line.q_from_mvar.toFixed(2).padStart(8);
-      const pTo = (-line.p_to_mw).toFixed(2).padStart(8);
-      const qTo = (-line.q_to_mvar).toFixed(2).padStart(8);
+      const pTo = line.p_to_mw.toFixed(2).padStart(8);
+      const qTo = line.q_to_mvar.toFixed(2).padStart(8);
       const pLoss = line.pl_mw.toFixed(3).padStart(8);
       const qLoss = line.ql_mvar.toFixed(2).padStart(8);
 
@@ -271,11 +264,64 @@ export default function NumericModel() {
       const jsPDFModule = await import('jspdf');
       const jsPDF = jsPDFModule.default;
       
-      const doc = new jsPDF();
+      // Usar orientação retrato (portrait) com página A4 e margem 20
+      const doc = new jsPDF('portrait', 'mm', 'a4');
       const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 20;
-      const lineHeight = 6;
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 20; // Margem conforme solicitado
+      const lineHeight = 5; // Espaçamento adequado para fonte 12
+      const maxLineWidth = pageWidth - (margin * 2);
       let yPosition = margin;
+
+      // Função para quebrar texto respeitando a largura máxima
+      const wrapText = (text: string, maxWidth: number, fontSize: number): string[] => {
+        doc.setFontSize(fontSize);
+        
+        if (!text || text.trim() === '') {
+          return [''];
+        }
+        
+        const lines: string[] = [];
+        let currentLine = '';
+        
+        // Quebrar caractere por caractere para maior precisão
+        for (let i = 0; i < text.length; i++) {
+          const char = text[i];
+          const testLine = currentLine + char;
+          
+          // Verificar se a linha teste cabe na largura máxima
+          if (doc.getTextWidth(testLine) <= maxWidth) {
+            currentLine = testLine;
+          } else {
+            // Se não cabe, adicionar a linha atual e começar nova linha
+            if (currentLine.length > 0) {
+              lines.push(currentLine);
+              currentLine = char;
+            } else {
+              // Se nem um caractere cabe, forçar adição
+              lines.push(char);
+              currentLine = '';
+            }
+          }
+        }
+        
+        // Adicionar última linha se houver conteúdo
+        if (currentLine.length > 0) {
+          lines.push(currentLine);
+        }
+        
+        return lines.length > 0 ? lines : [''];
+      };
+
+      // Função para verificar se precisa de nova página
+      const checkNewPage = (linesToAdd: number = 1) => {
+        if (yPosition + (lineHeight * linesToAdd) > pageHeight - margin) {
+          doc.addPage();
+          yPosition = margin;
+          return true;
+        }
+        return false;
+      };
 
       // Título do relatório
       doc.setFontSize(16);
@@ -284,57 +330,59 @@ export default function NumericModel() {
       yPosition += lineHeight * 2;
 
       // Data e hora
-      doc.setFontSize(10);
+      doc.setFontSize(12);
       doc.setFont("helvetica", "normal");
       const currentDate = new Date().toLocaleString('pt-BR');
       doc.text(`Gerado em: ${currentDate}`, margin, yPosition);
       yPosition += lineHeight * 2;
 
       // Seção de entrada
+      checkNewPage(3);
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text("Entrada (Código):", margin, yPosition);
-      yPosition += lineHeight;
+      doc.text("Entrada (Código MATPOWER):", margin, yPosition);
+      yPosition += lineHeight * 1.5;
 
-      doc.setFontSize(9);
+      // Processar entrada com fonte 12 e quebra de linha adequada
+      doc.setFontSize(12);
       doc.setFont("courier", "normal");
       const inputLines = inputValue.split('\n');
       
-      for (const line of inputLines) {
-        if (yPosition > 270) { // Nova página se necessário
-          doc.addPage();
-          yPosition = margin;
+      for (const originalLine of inputLines) {
+        // Quebrar cada linha original em linhas que cabem na página
+        const wrappedLines = wrapText(originalLine, maxLineWidth, 12);
+        
+        for (const wrappedLine of wrappedLines) {
+          checkNewPage();
+          doc.text(wrappedLine, margin, yPosition);
+          yPosition += lineHeight;
         }
-        doc.text(line, margin, yPosition);
-        yPosition += lineHeight * 0.8;
       }
 
       yPosition += lineHeight;
 
       // Seção de saída
-      if (yPosition > 250) {
-        doc.addPage();
-        yPosition = margin;
-      }
-
+      checkNewPage(3);
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
       doc.text("Resultados da Simulação:", margin, yPosition);
-      yPosition += lineHeight;
+      yPosition += lineHeight * 1.5;
 
-      doc.setFontSize(8);
+      // Processar saída com fonte 12
+      doc.setFontSize(12);
       doc.setFont("courier", "normal");
       const outputLines = output.split('\n');
       
-      for (const line of outputLines) {
-        if (yPosition > 280) { // Nova página se necessário
-          doc.addPage();
-          yPosition = margin;
+      for (const originalLine of outputLines) {
+        if (originalLine.trim() === '') {
+          // Linha vazia - apenas avançar
+          yPosition += lineHeight * 0.5;
+          continue;
         }
-        // Truncar linhas muito longas
-        const truncatedLine = line.length > 85 ? line.substring(0, 85) + '...' : line;
-        doc.text(truncatedLine, margin, yPosition);
-        yPosition += lineHeight * 0.7;
+      
+        checkNewPage();
+        doc.text(originalLine, margin, yPosition);
+        yPosition += lineHeight;
       }
 
       // Salvar o PDF

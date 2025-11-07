@@ -6,7 +6,7 @@ from typing import List
 
 class MatpowerService:
     # Constante para controlar prints de debug
-    DEBUG_ENABLED = True  # Altere para False para desabilitar prints de debug
+    DEBUG_ENABLED = False  # Altere para False para desabilitar prints de debug
     
     def __init__(self):
         # Caminho para o diretório data no backend
@@ -151,8 +151,10 @@ class MatpowerService:
         lines = []
         if hasattr(net, 'line') and len(net.line) > 0:
             self._debug_print(f"Colunas disponíveis em res_line: {list(net.res_line.columns)}")
+            self._debug_print("Iniciando conversão das linhas...")
             for i in range(len(net.line)):
                 try:
+                    self._debug_print(f"Convertendo os dados da linha são: {net.res_line.iloc[i].to_dict()}")
                     line_result = LineResult(
                         from_bus=int(net.line.from_bus.iloc[i]),
                         to_bus=int(net.line.to_bus.iloc[i]),
@@ -176,6 +178,7 @@ class MatpowerService:
                 except Exception as e:
                     print(f"ERROR: Erro ao converter line {i}: {str(e)}")
                     raise
+            self._debug_print("Conversão das linhas concluída.")
         
         # Converter resultados das cargas
         loads = []
