@@ -30,11 +30,12 @@ Interface moderna e interativa construída com Next.js para visualização e edi
 
 ## 🛠️ Tecnologias
 
-- **Next.js 15.5.6**: Framework React com App Router
-- **TypeScript**: Tipagem estática para maior confiabilidade
-- **React 18**: Biblioteca de componentes com hooks modernos
+- **Next.js 15.3.0**: Framework React com App Router
+- **TypeScript 5**: Tipagem estática para maior confiabilidade
+- **React 19**: Biblioteca de componentes com hooks modernos
 - **SVG Nativo**: Gráficos vetoriais para diagrama elétrico
 - **CSS Modules**: Estilização componentizada e isolada
+- **jsPDF 3.0.3**: Geração de relatórios em PDF
 
 ## 📁 Estrutura do Projeto
 
@@ -45,23 +46,18 @@ frontend/
 │   ├── layout.tsx           # Layout principal
 │   ├── page.tsx            # Página inicial
 │   └── simulator/          # Módulo do simulador
-│       ├── page.tsx        # Página do simulador
+│       ├── page.tsx        # Seleção de modelos
 │       ├── interfaces.ts   # Interfaces TypeScript
-│       ├── types.ts        # Tipos de dados
+│       ├── styles.d.ts     # Declarações de tipos CSS
 │       ├── styles.module.css # Estilos do simulador
 │       ├── components/     # Componentes React
-│       │   ├── PowerSystemElements.tsx # Componente principal
-│       │   ├── BusCard.tsx           # Card de barras
-│       │   ├── Header.tsx            # Cabeçalho
-│       │   ├── Footer.tsx            # Rodapé
-│       │   ├── NumericInput.tsx      # Input numérico
-│       │   ├── SimulationResult.tsx  # Resultados
-│       │   └── TransmissionCard.tsx  # Card de linhas
-│       ├── numeric/        # Visão numérica
+│       │   ├── PowerSystemElements.tsx # Diagrama SVG interativo
+│       │   └── Footer.tsx              # Rodapé
+│       ├── numeric/        # Entrada/saída numérica
 │       │   └── page.tsx
-│       └── system/         # Visão do sistema
+│       └── system/         # Visualização do sistema
 │           └── page.tsx
-├── public/                 # Arquivos estáticos
+├── public/                 # Arquivos estáticos (imagens)
 ├── next.config.ts         # Configuração Next.js
 ├── package.json           # Dependências e scripts
 ├── tsconfig.json          # Configuração TypeScript

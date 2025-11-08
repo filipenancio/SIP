@@ -1,8 +1,8 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'SIP - Simulador Iterativo de Potência',
-  description: 'Simulador de sistemas de potência da UNIVALI',
+  title: 'SISEP - Simulador Interativo de Sistemas Elétricos de Potência',
+  description: 'Simulador de sistemas elétricos de potência - Autor: Filipe G Venâncio - TCC UNIVALI - Curso de Engenharia Elétrica - 2025',
 };
 
 export default function RootLayout({

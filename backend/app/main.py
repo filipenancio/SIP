@@ -8,15 +8,29 @@ from app.routes.simulation_routes import router as simulation_router
 
 def create_app():
     app = FastAPI(
-        title="Simulador de Fluxo de Potência - SIFP",
+        title="Simulador de Fluxo de Potência - SISEP",
         description="""
-        API desenvolvida para simulação de fluxo de potência utilizando pandapower e modelos MATPOWER.
+        ## Sistema Interativo de Simulação de Energia e Potência (SISEP)
         
-        Funcionalidades:
-        * Simulação de fluxo de potência
-        * Suporte a arquivos MATPOWER
+        API desenvolvida para simulação de fluxo de potência utilizando **Pandapower** e modelos **MATPOWER**.
+        
+        ### Funcionalidades:
+        * 🔌 Simulação de fluxo de potência em sistemas elétricos
+        * 📁 Suporte a arquivos MATPOWER (.m)
+        * 📊 Análise de resultados de barras, geradores e linhas de transmissão
+        * 🚀 Upload de arquivos customizados ou uso de casos pré-carregados
+        
+        ### Casos disponíveis:
+        * case3p.m, case4gs.m, case5.m, case6ww.m, case9.m, case14.m
         """,
         version="1.0.0",
+        contact={
+            "name": "Repositório SISEP",
+            "url": "https://github.com/filipenancio/SISEP",
+        },
+        license_info={
+            "name": "Open Source",
+        },
     )
 
     # Configurar CORS
@@ -35,7 +49,7 @@ def create_app():
     )
 
     # Incluir rotas
-    app.include_router(simulation_router, prefix="/sip", tags=["Simulação"])
+    app.include_router(simulation_router, prefix="/sisep", tags=["Simulação de Sistema Elétrico de Potência"])
 
     return app
 
@@ -44,13 +58,16 @@ app = create_app()
 @app.get("/", tags=["Root"])
 async def read_root():
     """
-    Rota raiz para verificar se a API está funcionando
+    Endpoint raiz da API - Informações do sistema
+    
+    Retorna informações básicas sobre a API SISEP, incluindo versão e links para documentação.
     """
     return {
-        "message": "Sistema de Simulação de Fluxo de Potência",
+        "message": "Sistema Interativo de Simulação de Energia e Potência (SISEP)",
         "version": app.version,
         "docs": "/docs",
-        "redoc": "/redoc"
+        "redoc": "/redoc",
+        "api_base": "/sisep"
     }
 
 def custom_openapi():

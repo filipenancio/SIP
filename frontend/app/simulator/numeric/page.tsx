@@ -223,7 +223,7 @@ export default function NumericModel() {
       formData.append("file", file);
 
       // Enviar para o backend
-      const response = await fetch("http://localhost:8000/sip/simulate/matpower/upload", {
+      const response = await fetch("http://localhost:8000/sisep/simulate/matpower/upload", {
         method: "POST",
         body: formData,
       });
@@ -262,10 +262,19 @@ export default function NumericModel() {
     try {
       // Importar jsPDF dinamicamente
       const jsPDFModule = await import('jspdf');
-      const jsPDF = jsPDFModule.default;
+      const jsPDF = jsPDFModule.default || jsPDFModule;
+      
+      // Verificar se jsPDF foi importado corretamente
+      if (!jsPDF) {
+        throw new Error('Falha ao carregar biblioteca jsPDF');
+      }
       
       // Usar orientação retrato (portrait) com página A4 e margem 20
-      const doc = new jsPDF('portrait', 'mm', 'a4');
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       const margin = 20; // Margem conforme solicitado
@@ -326,7 +335,7 @@ export default function NumericModel() {
       // Título do relatório
       doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
-      doc.text("Relatório de Simulação - SIFP", pageWidth / 2, yPosition, { align: 'center' });
+      doc.text("Relatório de Simulação - SISEP", pageWidth / 2, yPosition, { align: 'center' });
       yPosition += lineHeight * 2;
 
       // Data e hora
@@ -386,10 +395,11 @@ export default function NumericModel() {
       }
 
       // Salvar o PDF
-      doc.save(`relatorio-sifp-${new Date().toISOString().split('T')[0]}.pdf`);
+      doc.save(`relatorio-sisep-${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
-      alert("Erro ao gerar o relatório PDF. Verifique se a biblioteca jsPDF está disponível.");
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      alert(`Erro ao gerar o relatório PDF: ${errorMessage}\n\nVerifique o console para mais detalhes.`);
     }
   };
 

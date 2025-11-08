@@ -1,4 +1,4 @@
-# Simulador Interatico de Sistema Elétrico de de Potência - SISEP
+# Simulador Interativo de Sistema Elétrico de de Potência - SISEP
 
 ## Descrição
 Sistema web para simulação e visualização interativa de sistemas elétricos de potência. O projeto combina uma interface moderna em Next.js com uma API robusta em FastAPI, utilizando o Pandapower para análise de fluxo de potência.
@@ -21,13 +21,13 @@ Sistema web para simulação e visualização interativa de sistemas elétricos 
 ## Estrutura do Projeto
 ```
 SISEP/
-├── backend/            # API FastAPI + MATPOWER
+├── backend/            # API FastAPI + Pandapower
 │   ├── app/
 │   │   ├── main.py    # Aplicação principal
 │   │   ├── models/    # Modelos de dados
 │   │   ├── routes/    # Rotas da API
 │   │   └── services/  # Lógica de negócio
-│   ├── data/          # Casos MATPOWER (.m files)
+│   ├── data/          # Casos de teste (.m files)
 │   └── tests/         # Testes automatizados
 ├── frontend/          # Interface Next.js + React
 │   └── app/
@@ -61,8 +61,8 @@ SISEP/
 
 1. **Clone o repositório:**
 ```bash
-git clone https://github.com/filipenancio/SIFP.git
-cd SIFP
+git clone https://github.com/filipenancio/SISEP.git
+cd SISEP
 ```
 
 2. **Inicie os containers:**
@@ -117,9 +117,11 @@ npm run dev
 - **Valores Originais**: Baseados no arquivo case3p.m original
 
 ## Casos de Teste
-O sistema inclui casos MATPOWER padrão:
+O sistema inclui casos de teste padrão:
 - **case3p.m**: Sistema de 3 barras (principal)
+- **case4gs.m**: Sistema de 4 barras
 - **case5.m**: Sistema de 5 barras
+- **case6ww.m**: Sistema de 6 barras
 - **case9.m**: Sistema IEEE de 9 barras
 - **case14.m**: Sistema IEEE de 14 barras
 
@@ -169,6 +171,6 @@ Este projeto está licenciado sob a MIT License - veja o arquivo [LICENSE](LICEN
 
 ## Contato
 
-**Filipe Nancio** - [@filipenancio](https://github.com/filipenancio)
+**Filipe Venancio** - [@filipenancio](https://github.com/filipenancio)
 
-**Link do Projeto**: [https://github.com/filipenancio/SIFP](https://github.com/filipenancio/SIFP)
+**Link do Projeto**: [https://github.com/filipenancio/SISEP](https://github.com/filipenancio/SISEP)

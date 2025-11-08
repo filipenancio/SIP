@@ -2,7 +2,6 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
-from app.models.power_system_input import PowerSystemInput
 from app.models.power_system_results import PowerSystemResult
 import pandapower as pp
 from pandapower.converter.matpower import from_mpc
@@ -17,7 +16,7 @@ def test_use_modelo_matpower():
     filename = os.path.basename(file_path)
     # print(f"Usando o arquivo: {filename}")
     # Fazer a requisição GET
-    response = client.get(f"/sip/matpower/{filename}")
+    response = client.get(f"/sisep/matpower/{filename}")
 
     # Verificar o status code
     assert response.status_code == 200
@@ -43,7 +42,7 @@ def test_upload_matpower():
     file_path = os.path.join(os.path.dirname(__file__), "../data/case3p.m")
     with open(file_path, "rb") as f:
         files = {"file": ("case3p.m", f, "text/plain")}
-        response = client.post("/sip/simulate/matpower/upload", files=files)
+        response = client.post("/sisep/simulate/matpower/upload", files=files)
     
     assert response.status_code == 200
     data = response.json()

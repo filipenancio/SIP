@@ -1,14 +1,10 @@
 fastapi
 uvicorn
-matplotlib
 pandas
 numpy
 pydantic
 pandapower
 pytest
 httpx
-lxml
-beautifulsoup4
-matpowercaseframes
-numba
 python-multipart
+matpowercaseframes
