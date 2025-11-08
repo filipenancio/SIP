@@ -512,8 +512,63 @@ const EditModalContent: React.FC<{
 
 // Componente para o Diagrama do Sistema de 3 Barras
 export const ThreeBusSystemDiagram: React.FC = () => {
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
+  // Posições das barras no diagrama
+  const busPositions = {
+    1: { x: 250, y: 250 },
+    2: { x: 550, y: 250 },
+    3: { x: 400, y: 400 }
+  };
+
+  // Calcular centro e zoom inicial
+  const calculateInitialView = () => {
+    const positions = Object.values(busPositions);
+    
+    // Calcular limites do diagrama com margem menor para elementos externos
+    const margin = 80; // Margem reduzida
+    const minX = Math.min(...positions.map(p => p.x)) - margin;
+    const maxX = Math.max(...positions.map(p => p.x)) + margin;
+    const minY = Math.min(...positions.map(p => p.y)) - margin;
+    const maxY = Math.max(...positions.map(p => p.y)) + margin;
+    
+    // Dimensões do diagrama
+    const diagramWidth = maxX - minX;
+    const diagramHeight = maxY - minY;
+    const diagramCenterX = (minX + maxX) / 2;
+    const diagramCenterY = (minY + maxY) / 2;
+    
+    // Dimensões do viewBox (1200x800)
+    const viewBoxWidth = 1200;
+    const viewBoxHeight = 800;
+    const viewBoxCenterX = viewBoxWidth / 2;
+    const viewBoxCenterY = viewBoxHeight / 2;
+    
+    // Calcular zoom mais conservador (usar 60% da tela)
+    const zoomX = (viewBoxWidth * 0.7) / diagramWidth;
+    const zoomY = (viewBoxHeight * 0.7) / diagramHeight;
+    const optimalZoom = Math.min(zoomX, zoomY, 1.2); // Limitar zoom a 1.2
+    
+    // Calcular pan para centralizar perfeitamente no viewBox
+    const panX = viewBoxCenterX - (diagramCenterX * optimalZoom);
+    const panY = viewBoxCenterY - (diagramCenterY * optimalZoom) - 180; // Ajuste para subir o diagrama
+    
+    // Debug: vamos ver os valores calculados
+    console.log('Debug centralização:', {
+      positions,
+      minX, maxX, minY, maxY,
+      diagramWidth, diagramHeight,
+      diagramCenterX, diagramCenterY,
+      viewBoxCenterX, viewBoxCenterY,
+      zoomX, zoomY, optimalZoom,
+      panX, panY
+    });
+    
+    return { pan: { x: panX, y: panY }, zoom: optimalZoom };
+  };
+
+  const initialView = calculateInitialView();
+  
+  const [pan, setPan] = useState(initialView.pan);
+  const [zoom, setZoom] = useState(initialView.zoom);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [tooltip, setTooltip] = useState({ show: false, x: 0, y: 0, content: null as React.ReactNode });
@@ -527,13 +582,6 @@ export const ThreeBusSystemDiagram: React.FC = () => {
   const [generatorEditConfirmModal, setGeneratorEditConfirmModal] = useState({ show: false, generator: null as Generator | null });
   const [sistemaState, setSistemaState] = useState(() => createDeepCopy(sistemaOriginal));
   const svgRef = useRef<SVGSVGElement>(null);
-
-  // Posições das barras no diagrama
-  const busPositions = {
-    1: { x: 250, y: 250 },
-    2: { x: 550, y: 250 },
-    3: { x: 400, y: 400 }
-  };
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     setIsDragging(true);
@@ -951,12 +999,10 @@ export const ThreeBusSystemDiagram: React.FC = () => {
       <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <svg 
           ref={svgRef}
-          width="800" 
-          height="600" 
-          viewBox="0 0 800 600" 
+          width="100%" 
+          height="100%" 
+          viewBox="0 0 1200 800" 
           style={{ 
-            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-            transformOrigin: 'center center',
             transition: isDragging ? 'none' : 'transform 0.1s ease-out'
           }}
           onMouseDown={handleMouseDown}
@@ -965,8 +1011,10 @@ export const ThreeBusSystemDiagram: React.FC = () => {
           onMouseLeave={handleMouseUp}
           onWheel={handleWheel}
         >
-          <rect width="800" height="600" fill="#ffffff" stroke="#ffffff" strokeWidth="1" />
+          <rect width="1200" height="800" fill="#ffffff" stroke="#ffffff" strokeWidth="1" />
           
+          {/* Grupo com transformação para pan e zoom */}
+          <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
           {/* Linhas de transmissão */}
           {sistemaState.branch.map((branch: Branch, index: number) => {
             const pos1 = busPositions[branch.fbus as keyof typeof busPositions];
@@ -1035,6 +1083,7 @@ export const ThreeBusSystemDiagram: React.FC = () => {
               />
             );
           })}
+          </g>
         </svg>
       </div>
 
