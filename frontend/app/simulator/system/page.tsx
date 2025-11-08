@@ -3,6 +3,7 @@ import styles from "../styles.module.css";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import Footer from "../components/Footer";
+import { ThreeBusSystemDiagram } from "../components/PowerSystemElements";
 
 export default function SystemModel() {
   const router = useRouter();
@@ -48,7 +49,7 @@ export default function SystemModel() {
             height={80}
             className={styles.logo}
           />
-          <h1 className={styles.headerTitle}>Modelo Iterativo</h1>
+          <h1 className={styles.headerTitle}>Modelo Interativo - SISEP</h1>
         </div>
       </header>
 
@@ -56,7 +57,20 @@ export default function SystemModel() {
         <div className={styles.contentContainer}>
           <h2 className={styles.systemTitle}>{getSystemTitle()}</h2>
           <div className={styles.systemDiagram}>
-            {/* Área reservada para o diagrama do sistema */}
+            {systemName === 'case3p.m' ? (
+              <ThreeBusSystemDiagram />
+            ) : (
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                height: '100%',
+                color: '#666',
+                fontSize: '18px'
+              }}>
+                Diagrama do sistema será exibido aqui
+              </div>
+            )}
           </div>
         </div>
       </main>

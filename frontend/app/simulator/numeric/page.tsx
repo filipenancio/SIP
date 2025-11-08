@@ -486,7 +486,7 @@ end`}
             className={styles.logo}
           />
           <h1 className={styles.headerTitle}>
-            Modelo numérico - SIP
+            Modelo Numérico - SISEP
           </h1>
         </div>
       </header>
