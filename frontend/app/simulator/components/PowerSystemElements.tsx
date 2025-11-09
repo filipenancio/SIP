@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import MessageModal from './MessageModal';
 
 // Tipos baseados no formato MATPOWER
 interface Bus {
@@ -1225,16 +1226,16 @@ export const ThreeBusSystemDiagram: React.FC = () => {
               <button
                 onClick={saveEditModal}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#218838';
+                  e.currentTarget.style.backgroundColor = '#004b8d';
                   e.currentTarget.style.transform = 'scale(1.05)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#28a745';
+                  e.currentTarget.style.backgroundColor = '#003366';
                   e.currentTarget.style.transform = 'scale(1)';
                 }}
                 style={{
                   padding: '10px 20px',
-                  backgroundColor: '#28a745',
+                  backgroundColor: '#003366',
                   color: 'white',
                   border: 'none',
                   borderRadius: '4px',
@@ -1252,222 +1253,46 @@ export const ThreeBusSystemDiagram: React.FC = () => {
         document.body
       )}
 
-      {/* Modal de Confirmação */}
-      {confirmModal.show && createPortal(
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999999
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '30px',
-            borderRadius: '8px',
-            boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
-            minWidth: '350px',
-            maxWidth: '450px',
-            textAlign: 'center'
-          }}>
-            <h3 style={{ 
-              margin: '0 0 16px 0', 
-              fontSize: '18px', 
-              fontWeight: 'bold', 
-              color: '#333' 
-            }}>
-              {getRestoreMessage().title}
-            </h3>
+      <MessageModal
+        show={confirmModal.show}
+        title={getRestoreMessage().title}
+        message={<span dangerouslySetInnerHTML={{ __html: getRestoreMessage().message }} />}
+        buttons={[
+          {
+            label: 'Não',
+            onClick: cancelRestore,
+            variant: 'secondary'
+          },
+          {
+            label: 'Sim',
+            onClick: confirmRestore,
+            variant: 'primary'
+          }
+        ]}
+      />
 
-            {/* Linha separadora após título */}
-            <div style={{
-              height: '1px',
-              backgroundColor: '#d3d3d3',
-              margin: '4px 0',
-              marginBottom: '20px'
-            }}></div>
-            
-            <p style={{
-              margin: '0 0 24px 0',
-              fontSize: '14px',
-              color: '#666',
-              lineHeight: '1.4'
-            }} dangerouslySetInnerHTML={{ __html: getRestoreMessage().message }}>
-            </p>
-
-            {/* Linha separadora antes dos botões */}
-            <div style={{
-              height: '1px',
-              backgroundColor: '#d3d3d3',
-              margin: '4px 0',
-              marginTop: '20px',
-              marginBottom: '16px'
-            }}></div>
-
-            <div style={{
-              display: 'flex',
-              justifyContent: 'center',
-              gap: '16px'
-            }}>
-              <button
-                onClick={cancelRestore}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#b0b0b0';
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#c8c8c8';
-                  e.currentTarget.style.transform = 'scale(1)';
-                }}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#c8c8c8',
-                  color: '#333',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                  minWidth: '90px',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Não
-              </button>
-              <button
-                onClick={confirmRestore}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#c82333';
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#dc3545';
-                  e.currentTarget.style.transform = 'scale(1)';
-                }}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#dc3545',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                  minWidth: '90px',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Sim
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* Modal de Confirmação de Edição do Gerador */}
-      {generatorEditConfirmModal.show && createPortal(
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999999
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '30px',
-            borderRadius: '8px',
-            boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
-            minWidth: '350px',
-            maxWidth: '450px',
-            textAlign: 'center'
-          }}>
-            <h3 style={{ 
-              margin: '0 0 16px 0', 
-              fontSize: '18px', 
-              fontWeight: 'bold', 
-              color: '#333' 
-            }}>
-              Gerador Adicionado
-            </h3>
-            
-            <p style={{
-              margin: '0 0 24px 0',
-              fontSize: '14px',
-              color: '#666',
-              lineHeight: '1.4'
-            }}>
-              Um novo gerador foi adicionado à Barra {generatorEditConfirmModal.generator?.bus} com valores padrão.<br/>
-              Deseja editar os parâmetros do gerador agora?
-            </p>
-
-            <div style={{
-              display: 'flex',
-              justifyContent: 'center',
-              gap: '16px'
-            }}>
-              <button
-                onClick={cancelEditGenerator}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#b0b0b0';
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#c8c8c8';
-                  e.currentTarget.style.transform = 'scale(1)';
-                }}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#c8c8c8',
-                  color: '#333',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                  minWidth: '90px',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Não
-              </button>
-              <button
-                onClick={confirmEditGenerator}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#218838';
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#28a745';
-                  e.currentTarget.style.transform = 'scale(1)';
-                }}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#28a745',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                  minWidth: '90px',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Sim
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <MessageModal
+        show={generatorEditConfirmModal.show}
+        title="Gerador Adicionado"
+        message={
+          <>
+            Um novo gerador foi adicionado à Barra {generatorEditConfirmModal.generator?.bus} com valores padrão.<br/>
+            Deseja editar os parâmetros do gerador agora?
+          </>
+        }
+        buttons={[
+          {
+            label: 'Não',
+            onClick: cancelEditGenerator,
+            variant: 'secondary'
+          },
+          {
+            label: 'Sim',
+            onClick: confirmEditGenerator,
+            variant: 'primary'
+          }
+        ]}
+      />
 
       {/* Tooltip */}
       <Tooltip 

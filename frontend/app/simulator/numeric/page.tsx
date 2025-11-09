@@ -3,6 +3,7 @@ import styles from "../styles.module.css";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Footer from "../components/Footer";
+import MessageModal from "../components/MessageModal";
 import { useState, useRef } from "react";
 
 export default function NumericModel() {
@@ -10,6 +11,7 @@ export default function NumericModel() {
   const [output, setOutput] = useState("");
   const [inputValue, setInputValue] = useState("");
   const [currentView, setCurrentView] = useState<'input' | 'output'>('input');
+  const [errorModal, setErrorModal] = useState({ show: false, title: '', message: '' });
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
 
@@ -203,12 +205,20 @@ export default function NumericModel() {
     const currentInput = inputRef.current?.value;
     
     if (!currentInput || currentInput.trim() === "") {
-      alert("A entrada fornecida não é válida! Verifique os dados inseridos, lembrando de manter a sintaxe similar a do Matpower.");
+      setErrorModal({
+        show: true,
+        title: 'Entrada Inválida',
+        message: 'A entrada fornecida é inválida! Verifique os dados inseridos!\n\nObs.: Utilize sintaxe similar a do MATPOWER.'
+      });
       return;
     }
 
     if (!validateMatpowerFormat(currentInput)) {
-      alert("A entrada fornecida não é válida! Verifique os dados inseridos, lembrando de manter a sintaxe similar a do Matpower.");
+      setErrorModal({
+        show: true,
+        title: 'Formato Inválido',
+        message: 'A entrada fornecida é inválida! Verifique os dados inseridos!\n\nObs.: Utilize sintaxe similar a do MATPOWER.'
+      });
       return;
     }
 
@@ -242,7 +252,11 @@ export default function NumericModel() {
       setCurrentView('output');
     } catch (error) {
       console.error("Erro na simulação:", error);
-      alert("Erro ao executar a simulação");
+      setErrorModal({
+        show: true,
+        title: 'Erro na Simulação',
+        message: 'Erro ao executar a simulação. Verifique os dados de entrada e tente novamente.'
+      });
       setOutput("Erro ao executar a simulação");
     } finally {
       setIsLoading(false);
@@ -399,7 +413,11 @@ export default function NumericModel() {
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      alert(`Erro ao gerar o relatório PDF: ${errorMessage}\n\nVerifique o console para mais detalhes.`);
+      setErrorModal({
+        show: true,
+        title: 'Erro ao Gerar PDF',
+        message: `Erro ao gerar o relatório PDF: ${errorMessage}\n\nVerifique o console para mais detalhes.`
+      });
     }
   };
 
@@ -506,6 +524,19 @@ end`}
       </main>
 
       <Footer />
+
+      <MessageModal
+        show={errorModal.show}
+        title={errorModal.title}
+        message={errorModal.message}
+        buttons={[
+          {
+            label: 'OK',
+            onClick: () => setErrorModal({ show: false, title: '', message: '' }),
+            variant: 'primary'
+          }
+        ]}
+      />
     </div>
   );
 }
