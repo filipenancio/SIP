@@ -544,26 +544,28 @@ export const ThreeBusSystemDiagram: React.FC = () => {
     const viewBoxCenterY = viewBoxHeight / 2;
     
     // Calcular zoom mais conservador (usar 60% da tela)
-    const zoomX = (viewBoxWidth * 0.7) / diagramWidth;
-    const zoomY = (viewBoxHeight * 0.7) / diagramHeight;
+    const zoomX = (viewBoxWidth * 0.6) / diagramWidth;
+    const zoomY = (viewBoxHeight * 0.6) / diagramHeight;
     const optimalZoom = Math.min(zoomX, zoomY, 1.2); // Limitar zoom a 1.2
     
+    // Dimensões DIV disponibilizada para diagrama
+    const divWidth = 1200;
+    const divHeight = 480;
+
+    // Correção para centralização do diagrama na DIV
+    const ajustWidth = (viewBoxWidth - divWidth)/2;
+    const ajustHeight = (viewBoxHeight - divHeight)/2;
+
     // Calcular pan para centralizar perfeitamente no viewBox
-    const panX = viewBoxCenterX - (diagramCenterX * optimalZoom);
-    const panY = viewBoxCenterY - (diagramCenterY * optimalZoom) - 180; // Ajuste para subir o diagrama
+    const panX = viewBoxCenterX - (diagramCenterX * optimalZoom) - ajustWidth;
+    const panY = viewBoxCenterY - (diagramCenterY * optimalZoom) - ajustHeight; // Ajuste para subir o diagrama
     
-    // Debug: vamos ver os valores calculados
-    console.log('Debug centralização:', {
-      positions,
-      minX, maxX, minY, maxY,
-      diagramWidth, diagramHeight,
-      diagramCenterX, diagramCenterY,
-      viewBoxCenterX, viewBoxCenterY,
-      zoomX, zoomY, optimalZoom,
-      panX, panY
-    });
-    
-    return { pan: { x: panX, y: panY }, zoom: optimalZoom };
+    return { 
+      pan: { x: panX, y: panY }, 
+      zoom: optimalZoom,
+      centerX: diagramCenterX,
+      centerY: diagramCenterY
+    };
   };
 
   const initialView = calculateInitialView();
@@ -607,9 +609,12 @@ export const ThreeBusSystemDiagram: React.FC = () => {
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    setZoom(prevZoom => Math.min(Math.max(prevZoom * delta, 0.5), 3));
-  }, []);
+    
+    if(e.deltaY > 0) 
+      return zoomOut(); 
+    
+    return zoomIn(); 
+  }, [zoom, pan]); // Adicionar dependências para que o callback seja atualizado
 
   const handleTooltip = useCallback((e: React.MouseEvent, show: boolean, content?: React.ReactNode) => {
     if (show && content) {
@@ -625,16 +630,71 @@ export const ThreeBusSystemDiagram: React.FC = () => {
   }, []);
 
   const zoomIn = () => {
-    setZoom(prevZoom => Math.min(prevZoom * 1.2, 3));
+    const centerX = 600; // Centro do viewBox
+    const centerY = 400;
+    const zoomFactor = 1.1; // Fator de zoom
+    
+    // Calcular novos valores baseados nos estados atuais
+    const currentZoom = zoom;
+    const currentPan = pan;
+    const newZoom = Math.min(currentZoom * zoomFactor, 3);
+    
+    console.log('=== ZOOM IN ===');
+    console.log('currentZoom:', currentZoom, '-> newZoom:', newZoom);
+    console.log('currentPan:', currentPan);
+    console.log('centerX:', centerX, 'centerY:', centerY);
+    
+    // Ponto do diagrama que está no centro
+    const diagramX = (centerX - currentPan.x) / currentZoom;
+    const diagramY = (centerY - currentPan.y) / currentZoom;
+    console.log('diagramX:', diagramX, 'diagramY:', diagramY);
+    
+    // Novo pan para manter esse ponto no centro
+    const newPanX = centerX - diagramX * newZoom;
+    const newPanY = centerY - diagramY * newZoom;
+    console.log('newPan:', { x: newPanX, y: newPanY });
+    console.log('delta pan:', { x: newPanX - currentPan.x, y: newPanY - currentPan.y });
+    
+    // Atualizar estados
+    setZoom(newZoom);
+    setPan({ x: newPanX, y: newPanY });
   };
 
   const zoomOut = () => {
-    setZoom(prevZoom => Math.max(prevZoom * 0.8, 0.5));
+    const centerX = 600;
+    const centerY = 400;
+    const zoomFactor = 1.1; // Mesmo fator do zoom in
+    
+    // Calcular novos valores baseados nos estados atuais
+    const currentZoom = zoom;
+    const currentPan = pan;
+    const newZoom = Math.max(currentZoom / zoomFactor, 0.5); // Dividir em vez de multiplicar por 0.8
+    
+    console.log('=== ZOOM OUT ===');
+    console.log('currentZoom:', currentZoom, '-> newZoom:', newZoom);
+    console.log('currentPan:', currentPan);
+    console.log('centerX:', centerX, 'centerY:', centerY);
+    
+    // Ponto do diagrama que está no centro
+    const diagramX = (centerX - currentPan.x) / currentZoom;
+    const diagramY = (centerY - currentPan.y) / currentZoom;
+    console.log('diagramX:', diagramX, 'diagramY:', diagramY);
+    
+    // Novo pan para manter esse ponto no centro
+    const newPanX = centerX - diagramX * newZoom;
+    const newPanY = centerY - diagramY * newZoom;
+    console.log('newPan:', { x: newPanX, y: newPanY });
+    console.log('delta pan:', { x: newPanX - currentPan.x, y: newPanY - currentPan.y });
+    
+    // Atualizar estados
+    setZoom(newZoom);
+    setPan({ x: newPanX, y: newPanY });
   };
 
   const resetView = () => {
-    setPan({ x: 0, y: 0 });
-    setZoom(1);
+    const view = calculateInitialView();
+    setPan(view.pan);
+    setZoom(view.zoom);
   };
 
   // Funções para o modal de edição
