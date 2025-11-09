@@ -1,11 +1,14 @@
 "use client";
+import { useState } from "react";
 import styles from "../styles.module.css";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import Footer from "../components/Footer";
+import HeaderChild from "../components/HeaderChild";
 import { ThreeBusSystemDiagram } from "../components/PowerSystemElements";
 
 export default function SystemModel() {
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const systemName = searchParams.get('system');
@@ -40,18 +43,7 @@ export default function SystemModel() {
       />
       <div className={styles.overlay} />
 
-      <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <Image
-            src="/univali-logo.png"
-            alt="UNIVALI Logo"
-            width={80}
-            height={80}
-            className={styles.logo}
-          />
-          <h1 className={styles.headerTitle}>Modelo Interativo - SISEP</h1>
-        </div>
-      </header>
+      <HeaderChild title="Modelo Interativo - SISEP" logoSize={80} />
 
       <main className={styles.mainContent}>
         <div className={styles.contentContainer}>
@@ -84,9 +76,15 @@ export default function SystemModel() {
         </button>
         <button
           className={styles.simulateButton}
-          onClick={() => {/* TODO: Implementar simulação */}}
+          onClick={() => {
+            // TODO: Implementar simulação
+            // setIsLoading(true);
+            // ... chamada da API ...
+            // setIsLoading(false);
+          }}
+          disabled={isLoading}
         >
-          SIMULAR
+          {isLoading ? "SIMULANDO..." : "SIMULAR"}
         </button>
       </div>
 

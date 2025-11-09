@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Footer from "../components/Footer";
 import MessageModal from "../components/MessageModal";
+import HeaderChild from "../components/HeaderChild";
 import { useState, useRef } from "react";
 
 export default function NumericModel() {
@@ -504,20 +505,7 @@ end`}
       />
       <div className={styles.overlay} />
 
-      <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <Image
-            src="/univali-logo.png"
-            alt="UNIVALI Logo"
-            width={60}
-            height={60}
-            className={styles.logo}
-          />
-          <h1 className={styles.headerTitle}>
-            Modelo Numérico - SISEP
-          </h1>
-        </div>
-      </header>
+      <HeaderChild title="Modelo Numérico - SISEP" logoSize={60} />
 
       <main className={styles.mainContent}>
         {currentView === 'input' ? <InputView /> : <OutputView />}

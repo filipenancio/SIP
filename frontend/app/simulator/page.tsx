@@ -4,15 +4,16 @@ import styles from "./styles.module.css";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Footer from "./components/Footer";
+import MessageModal from "./components/MessageModal";
 
 export default function Simulator() {
   const [selectedFile, setSelectedFile] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const router = useRouter();
 
   const handleSimulation = () => {
     if (!selectedFile) {
-      alert("Por favor selecione um modelo para simular");
+      setShowModal(true);
       return;
     }
 
@@ -70,7 +71,7 @@ export default function Simulator() {
             <button
               className={styles.simulateButton}
               onClick={handleSimulation}
-              disabled={!selectedFile || isLoading}
+              disabled={!selectedFile}
             >
               SIMULAR
             </button>
@@ -79,6 +80,19 @@ export default function Simulator() {
       </main>
 
       <Footer />
+
+      <MessageModal
+        show={showModal}
+        title="Seleção Obrigatória"
+        message="Por favor selecione um modelo para simular"
+        buttons={[
+          {
+            label: 'OK',
+            onClick: () => setShowModal(false),
+            variant: 'primary'
+          }
+        ]}
+      />
     </div>
   );
 }
