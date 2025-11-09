@@ -15,7 +15,6 @@ export default function NumericModel() {
   const [inputValue, setInputValue] = useState("");
   const [currentView, setCurrentView] = useState<'input' | 'output'>('input');
   const [errorModal, setErrorModal] = useState({ show: false, title: '', message: '' });
-  const inputRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
 
   const validateMatpowerFormat = (text: string): boolean => {
@@ -33,7 +32,7 @@ export default function NumericModel() {
   };
 
   const handleSubmit = async () => {
-    const currentInput = inputRef.current?.value;
+    const currentInput = inputValue;
     
     if (!currentInput || currentInput.trim() === "") {
       setErrorModal({
@@ -53,8 +52,6 @@ export default function NumericModel() {
       return;
     }
 
-    // Salvar o input antes de iniciar a simulação
-    setInputValue(currentInput);
     setIsLoading(true);
     
     try {
@@ -260,7 +257,6 @@ export default function NumericModel() {
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>Entrada</h2>
           <textarea
-            ref={inputRef}
             className={styles.textArea}
             placeholder={`Digite o modelo no formato MATPOWER...
 
@@ -272,7 +268,8 @@ function mpc = caseXXX
     mpc.branch = [ ... ];
 end`}
             spellCheck={false}
-            defaultValue={inputValue}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
           />
         </div>
         <div className={styles.actions}>
