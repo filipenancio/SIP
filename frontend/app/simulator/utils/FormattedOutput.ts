@@ -7,7 +7,7 @@ export function formatResults(result: any): string {
   
   // Cabeçalho do sistema
   formattedOutput += "=========================================================================================\n";
-  formattedOutput += "|                         SIFP - Resultado do Fluxo de Potência                         |\n";
+  formattedOutput += "|                         SISEP - Resultado do Fluxo de Potência                        |\n";
   formattedOutput += "=========================================================================================\n\n";
 
   // Sistema Summary

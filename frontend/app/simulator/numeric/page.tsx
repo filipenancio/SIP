@@ -6,6 +6,7 @@ import Footer from "../components/Footer";
 import MessageModal from "../components/MessageModal";
 import HeaderChild from "../components/HeaderChild";
 import { formatResults } from "../utils/FormattedOutput";
+import { formatInput } from "../utils/FormattedInput";
 import { useState, useRef } from "react";
 
 export default function NumericModel() {
@@ -196,14 +197,15 @@ export default function NumericModel() {
       doc.text("Entrada (Código MATPOWER):", margin, yPosition);
       yPosition += lineHeight * 1.5;
 
-      // Processar entrada com fonte 12 e quebra de linha adequada
-      doc.setFontSize(12);
+      // Formatar entrada usando FormattedInput
+      doc.setFontSize(8);
       doc.setFont("courier", "normal");
-      const inputLines = inputValue.split('\n');
+      const formattedInputText = formatInput(inputValue);
+      const inputLines = formattedInputText.split('\n');
       
       for (const originalLine of inputLines) {
         // Quebrar cada linha original em linhas que cabem na página
-        const wrappedLines = wrapText(originalLine, maxLineWidth, 12);
+        const wrappedLines = wrapText(originalLine, maxLineWidth, 8);
         
         for (const wrappedLine of wrappedLines) {
           checkNewPage();
@@ -221,8 +223,8 @@ export default function NumericModel() {
       doc.text("Resultados da Simulação:", margin, yPosition);
       yPosition += lineHeight * 1.5;
 
-      // Processar saída com fonte 12
-      doc.setFontSize(12);
+      // Processar saída com fonte 9
+      doc.setFontSize(9);
       doc.setFont("courier", "normal");
       const outputLines = output.split('\n');
       
