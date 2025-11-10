@@ -6,6 +6,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Footer from "../components/Footer";
 import HeaderChild from "../components/HeaderChild";
 import { ThreeBusSystemDiagram, sistemaOriginal } from "../components/PowerSystemElements";
+import { sistema4Barras } from "../data/case4p";
+import { sistema5Barras } from "../data/case5p";
+import { sistema14Barras } from "../data/case14p";
 import { MPC, MPCResult } from "../utils/SimulateUtils";
 import { mpcToMatpower } from "../utils/MPCToMatpower";
 import { formatInput } from "../utils/FormattedInput";
@@ -18,7 +21,23 @@ export default function SystemModel() {
   const systemName = searchParams.get('system');
   const [simulationStatus, setSimulationStatus] = useState<'idle' | 'simulating' | 'result'>('idle');
   const [simulationResult, setSimulationResult] = useState<MPCResult | null>(null);
-  const [inputMPC, setInputMPC] = useState<MPC>(sistemaOriginal);
+  
+  // Função para obter o sistema correto baseado no nome
+  const getInitialSystem = (): MPC => {
+    switch (systemName) {
+      case 'case4p.m':
+        return sistema4Barras;
+      case 'case5p.m':
+        return sistema5Barras;
+      case 'case14p.m':
+        return sistema14Barras;
+      case 'case3p.m':
+      default:
+        return sistemaOriginal;
+    }
+  };
+
+  const [inputMPC, setInputMPC] = useState<MPC>(getInitialSystem());
   const diagramRef = useRef<HTMLDivElement>(null);
   const legendRef = useRef<HTMLDivElement>(null);
 
@@ -43,9 +62,9 @@ export default function SystemModel() {
         return 'Sistema de 3 Barras';
       case 'case4p.m':
         return 'Sistema de 4 Barras';
-      case 'case5p':
+      case 'case5p.m':
         return 'Sistema de 5 Barras';
-      case 'case14.m':
+      case 'case14p.m':
         return 'Sistema de 14 Barras';
       default:
         return 'Sistema';
@@ -326,10 +345,11 @@ export default function SystemModel() {
         <div className={styles.contentContainer}>
           <h2 className={styles.systemTitle}>{getSystemTitle()}</h2>
           <div className={styles.systemDiagram} ref={diagramRef}>
-            {systemName === 'case3p.m' ? (
+            {(systemName === 'case3p.m' || systemName === 'case4p.m' || systemName === 'case5p.m' || systemName === 'case14p.m') ? (
               <ThreeBusSystemDiagram
                 externalControls={true}
                 onSimulationStatusChange={setSimulationStatus}
+                initialSystem={getInitialSystem()}
               />
             ) : (
               <div style={{ 

@@ -6,6 +6,9 @@ import { EditModalBranch, type Branch } from './EditModalBranch';
 import { EditModalBaseValues } from './EditModalBaseValues';
 import { ViewPortBaseSVG, DefaultLegend, BaseValuesDisplay, ResultTotals } from './ViewPortBaseSVG';
 import { Diagram3Bus, LineResult } from './Diagram3Bus';
+import Diagram4Bus from './Diagram4Bus';
+import Diagram5Bus from './Diagram5Bus';
+import Diagram14Bus from './Diagram14Bus';
 import { MPC, MPCResult, simulateSystem } from '../utils/SimulateUtils';
 import { TooltipBus } from './TooltipBus';
 import { TooltipGenerator } from './TooltipGenerator';
@@ -311,13 +314,17 @@ interface ThreeBusSystemDiagramProps {
   onSimulationStatusChange?: (status: 'idle' | 'simulating' | 'result') => void;
   onSimulate?: () => Promise<void>;
   externalControls?: boolean; // Se true, não renderiza botões internos
+  initialSystem?: MPC; // Sistema inicial opcional (usa sistemaOriginal se não fornecido)
 }
 
 export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({ 
   onSimulationStatusChange,
   onSimulate: externalOnSimulate,
-  externalControls = false
+  externalControls = false,
+  initialSystem
 }) => {
+  // Usar sistema fornecido ou padrão (3 barras)
+  const systemData = initialSystem || sistemaOriginal;
   // Posições das barras no diagrama
   const busPositions = {
     1: { x: 250, y: 250 },
@@ -381,13 +388,13 @@ export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({
   const [confirmBaseRestoreModal, setConfirmBaseRestoreModal] = useState({ show: false });
   const [generatorEditConfirmModal, setGeneratorEditConfirmModal] = useState({ show: false, generator: null as Generator | null });
   const [busTypeChangeModal, setbusTypeChangeModal] = useState({ show: false, message: '', busId: 0, newType: 1, onConfirm: () => {} });
-  const [sistemaState, setSistemaState] = useState(() => fixInitialBusTypes(createDeepCopy(sistemaOriginal)));
+  const [sistemaState, setSistemaState] = useState(() => fixInitialBusTypes(createDeepCopy(systemData)));
   const [baseModal, setBaseModal] = useState({
     show: false,
-    baseMVA: sistemaOriginal.baseMVA,
-    baseKV: sistemaOriginal.bus[0]?.baseKV || 230,
-    originalBaseMVA: sistemaOriginal.baseMVA,
-    originalBaseKV: sistemaOriginal.bus[0]?.baseKV || 230
+    baseMVA: systemData.baseMVA,
+    baseKV: systemData.bus[0]?.baseKV || 230,
+    originalBaseMVA: systemData.baseMVA,
+    originalBaseKV: systemData.bus[0]?.baseKV || 230
   });
   
   // Estados para simulação
@@ -624,8 +631,8 @@ export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({
             const existingGenIndex = newSistema.gen.findIndex((g: Generator) => g.bus === updatedBus.bus_i);
             if (existingGenIndex === -1) {
               // Verificar se existe um gerador original para esta barra
-              const originalBusFromSystem = sistemaOriginal.bus.find((b: Bus) => b.bus_i === updatedBus.bus_i);
-              const originalGeneratorFromSystem = sistemaOriginal.gen.find((g: Generator) => g.bus === updatedBus.bus_i);
+              const originalBusFromSystem = systemData.bus.find((b: Bus) => b.bus_i === updatedBus.bus_i);
+              const originalGeneratorFromSystem = systemData.gen.find((g: Generator) => g.bus === updatedBus.bus_i);
               
               let newGenerator: Generator;
               
@@ -770,7 +777,7 @@ export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({
     if (editModal.originalData) {
       if (editModal.type === 'bus') {
         // Restaurar dados da barra do sistema original
-        const originalBus = sistemaOriginal.bus.find((b: Bus) => b.bus_i === editModal.originalData.bus_i);
+        const originalBus = systemData.bus.find((b: Bus) => b.bus_i === editModal.originalData.bus_i);
         if (originalBus) {
           // Criar uma cópia completa dos dados originais da barra, incluindo hasGenerator
           const restoredBusData = { ...originalBus };
@@ -782,7 +789,7 @@ export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({
           
           // Se a barra originalmente tinha gerador, também restaurar o gerador no sistema
           if (originalBus.hasGenerator) {
-            const originalGenerator = sistemaOriginal.gen.find((g: Generator) => g.bus === originalBus.bus_i);
+            const originalGenerator = systemData.gen.find((g: Generator) => g.bus === originalBus.bus_i);
             if (originalGenerator) {
               const newSistema = { ...sistemaState };
               const genIndex = newSistema.gen.findIndex((g: Generator) => g.bus === originalBus.bus_i);
@@ -809,7 +816,7 @@ export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({
         }
       } else if (editModal.type === 'generator') {
         // Restaurar dados do gerador do sistema original
-        const originalGenerator = sistemaOriginal.gen.find((g: Generator) => g.bus === editModal.originalData.bus);
+        const originalGenerator = systemData.gen.find((g: Generator) => g.bus === editModal.originalData.bus);
         if (originalGenerator) {
           const restoredGeneratorData = { ...originalGenerator };
           
@@ -820,7 +827,7 @@ export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({
         }
       } else if (editModal.type === 'branch') {
         // Restaurar dados da linha do sistema original
-        const originalBranch = sistemaOriginal.branch.find((b: Branch) => 
+        const originalBranch = systemData.branch.find((b: Branch) => 
           b.fbus === editModal.originalData.fbus && b.tbus === editModal.originalData.tbus
         );
         if (originalBranch) {
@@ -890,8 +897,8 @@ export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({
       show: true,
       baseMVA: sistemaState.baseMVA,
       baseKV: sistemaState.bus[0]?.baseKV || 230,
-      originalBaseMVA: sistemaOriginal.baseMVA,
-      originalBaseKV: sistemaOriginal.bus[0]?.baseKV || 230
+      originalBaseMVA: systemData.baseMVA,
+      originalBaseKV: systemData.bus[0]?.baseKV || 230
     });
   };
 
@@ -1048,22 +1055,32 @@ export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({
         initialZoom={initialView.zoom}
         initialPan={initialView.pan}
       >
-        <Diagram3Bus
-          buses={sistemaState.bus}
-          generators={sistemaState.gen}
-          branches={sistemaState.branch}
-          lineResults={simulationResult?.lines}
-          isResultView={simulationStatus === 'result'}
-          onBusClick={(bus) => openEditModal('bus', bus)}
-          onGeneratorClick={(gen) => openEditModal('generator', gen)}
-          onBranchClick={(branch) => openEditModal('branch', branch)}
-          onLoadClick={(bus) => openEditModal('bus', bus)}
-          onBusHover={(e, show, bus) => handleTooltip(e, show, bus ? createBusTooltip(bus) : undefined)}
-          onGeneratorHover={(e, show, gen) => handleTooltip(e, show, gen ? createGeneratorTooltip(gen) : undefined)}
-          onBranchHover={(e, show, branch) => handleTooltip(e, show, branch ? createBranchTooltip(branch) : undefined)}
-          onLoadHover={(e, show, bus) => handleTooltip(e, show, bus ? (simulationStatus === 'result' ? createLoadTooltip(bus) : createBusTooltip(bus)) : undefined)}
-          hasDragged={hasDragged}
-        />
+        {(() => {
+          const numBuses = sistemaState.bus.length;
+          const DiagramComponent = numBuses === 4 ? Diagram4Bus : 
+                                   numBuses === 5 ? Diagram5Bus :
+                                   numBuses === 14 ? Diagram14Bus :
+                                   Diagram3Bus;
+          
+          return (
+            <DiagramComponent
+              buses={sistemaState.bus}
+              generators={sistemaState.gen}
+              branches={sistemaState.branch}
+              lineResults={simulationResult?.lines}
+              isResultView={simulationStatus === 'result'}
+              onBusClick={(bus) => openEditModal('bus', bus)}
+              onGeneratorClick={(gen) => openEditModal('generator', gen)}
+              onBranchClick={(branch) => openEditModal('branch', branch)}
+              onLoadClick={(bus) => openEditModal('bus', bus)}
+              onBusHover={(e, show, bus) => handleTooltip(e, show, bus ? createBusTooltip(bus) : undefined)}
+              onGeneratorHover={(e, show, gen) => handleTooltip(e, show, gen ? createGeneratorTooltip(gen) : undefined)}
+              onBranchHover={(e, show, branch) => handleTooltip(e, show, branch ? createBranchTooltip(branch) : undefined)}
+              onLoadHover={(e, show, bus) => handleTooltip(e, show, bus ? (simulationStatus === 'result' ? createLoadTooltip(bus) : createBusTooltip(bus)) : undefined)}
+              hasDragged={hasDragged}
+            />
+          );
+        })()}
       </ViewPortBaseSVG>
 
       {/* Botão Simular - aparece quando está no modo edição e não está usando controles externos */}
