@@ -27,6 +27,10 @@ export default function SystemModel() {
     show: false, 
     message: '' 
   });
+  const [exportModal, setExportModal] = useState<{ show: boolean; message: string }>({ 
+    show: false, 
+    message: '' 
+  });
   
   // Função para obter o sistema correto baseado no nome
   const getInitialSystem = (): MPC => {
@@ -46,7 +50,6 @@ export default function SystemModel() {
 
   const [inputMPC, setInputMPC] = useState<MPC>(getInitialSystem());
   const diagramRef = useRef<HTMLDivElement>(null);
-  const legendRef = useRef<HTMLDivElement>(null);
 
   // Listener para capturar dados da simulação
   useEffect(() => {
@@ -112,7 +115,10 @@ export default function SystemModel() {
 
   const generatePDF = async () => {
     if (!simulationResult || !inputMPC) {
-      alert('Nenhum resultado de simulação disponível para exportar.');
+      setExportModal({ 
+        show: true, 
+        message: 'Nenhum resultado de simulação disponível para exportar.' 
+      });
       return;
     }
 
@@ -233,6 +239,9 @@ export default function SystemModel() {
       yPosition += lineHeight * 1.5;
 
       // Converter resultado para formato compatível com formatResults
+      // console.log('[DEBUG] Linhas recebidas do backend:', simulationResult.lines);
+      // console.log('[DEBUG] Número de linhas:', simulationResult.lines.length);
+      
       const resultForFormatting = {
         buses: simulationResult.bus.map(b => ({
           bus_id: b.bus_id,
@@ -243,16 +252,19 @@ export default function SystemModel() {
         })),
         generators: simulationResult.generators,
         loads: simulationResult.loads,
-        lines: simulationResult.lines.map(l => ({
-          from_bus: l.from_bus - 1, // Converter de 1-indexed para 0-indexed
-          to_bus: l.to_bus - 1,
-          p_from_mw: l.p_from_mw,
-          q_from_mvar: l.q_from_mvar,
-          p_to_mw: l.p_to_mw,
-          q_to_mvar: l.q_to_mvar,
-          pl_mw: l.p_loss_mw,
-          ql_mvar: l.q_loss_mvar
-        })),
+        lines: simulationResult.lines.map(l => {
+          // console.log(`[DEBUG] Processando linha: ${l.from_bus}-${l.to_bus}`);
+          return {
+            from_bus: l.from_bus, // Backend já retorna 0-indexed
+            to_bus: l.to_bus,
+            p_from_mw: l.p_from_mw,
+            q_from_mvar: l.q_from_mvar,
+            p_to_mw: l.p_to_mw,
+            q_to_mvar: l.q_to_mvar,
+            pl_mw: l.p_loss_mw,
+            ql_mvar: l.q_loss_mvar
+          };
+        }),
         ext_grid: simulationResult.ext_grid.length > 0 ? simulationResult.ext_grid[0] : null,
         genCapacityP: simulationResult.genCapacityP,
         genCapacityQmin: simulationResult.genCapacityQmin,
@@ -324,37 +336,6 @@ export default function SystemModel() {
         }
         
         doc.addImage(imgData, 'PNG', margin, yPosition, imgWidth, imgHeight);
-        yPosition += imgHeight + lineHeight;
-      }
-
-      // Adicionar legenda em formato grid
-      if (legendRef.current) {
-        checkNewPage(50);
-        
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "bold");
-        doc.text("Legenda:", margin, yPosition);
-        yPosition += lineHeight * 2;
-
-        // Capturar a legenda
-        const canvas = await html2canvas(legendRef.current, {
-          backgroundColor: '#ffffff',
-          scale: 2,
-          logging: false,
-          useCORS: true
-        });
-        
-        const imgData = canvas.toDataURL('image/png');
-        const imgWidth = pageWidth - (margin * 2);
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        
-        // Adicionar nova página se necessário
-        if (yPosition + imgHeight > pageHeight - margin) {
-          doc.addPage();
-          yPosition = margin;
-        }
-        
-        doc.addImage(imgData, 'PNG', margin, yPosition, imgWidth, imgHeight);
       }
 
       // Salvar o PDF
@@ -363,7 +344,10 @@ export default function SystemModel() {
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      alert(`Erro ao gerar o relatório PDF: ${errorMessage}\n\nVerifique o console para mais detalhes.`);
+      setExportModal({ 
+        show: true, 
+        message: `Erro ao gerar o relatório PDF: ${errorMessage}\n\nVerifique o console para mais detalhes.` 
+      });
     }
   };
 
@@ -434,81 +418,16 @@ export default function SystemModel() {
           <button
             className={styles.simulateButton}
             onClick={() => {
-              console.log('Botão SIMULAR clicado, disparando evento');
+              // console.log('Botão SIMULAR clicado, disparando evento');
               const event = new CustomEvent('triggerSimulation');
               window.dispatchEvent(event);
-              console.log('Evento triggerSimulation disparado');
+              // console.log('Evento triggerSimulation disparado');
             }}
             disabled={simulationStatus === 'simulating'}
           >
             {simulationStatus === 'simulating' ? 'SIMULANDO...' : 'SIMULAR'}
           </button>
         )}
-      </div>
-
-      {/* Legenda oculta para captura no PDF */}
-      <div style={{ position: 'absolute', left: '-9999px', top: '0' }}>
-        <div 
-          ref={legendRef}
-          style={{
-            width: '700px',
-            backgroundColor: '#ffffff',
-            padding: '20px',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '15px'
-          }}
-        >
-          {/* Linha 1 */}
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <svg width="30" height="24" style={{ marginRight: '10px' }}>
-              <circle cx="15" cy="12" r="10" fill="#4169E1" stroke="#000" strokeWidth="2" />
-              <circle cx="15" cy="12" r="5" fill="#000" />
-            </svg>
-            <span style={{ fontSize: '14px' }}>Barra de Referência</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <svg width="30" height="24" style={{ marginRight: '10px' }}>
-              <circle cx="15" cy="12" r="10" fill="#4169E1" stroke="#000" strokeWidth="2" />
-            </svg>
-            <span style={{ fontSize: '14px' }}>Barra</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <svg width="30" height="24" style={{ marginRight: '10px' }}>
-              <rect x="5" y="4" width="20" height="16" fill="#32CD32" stroke="#000" strokeWidth="2" rx="2" />
-              <polygon points="10,16 15,7 20,16" fill="#FFD700" stroke="#000" strokeWidth="1" />
-            </svg>
-            <span style={{ fontSize: '14px' }}>Barra geradora</span>
-          </div>
-
-          {/* Linha 2 */}
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <svg width="30" height="24" style={{ marginRight: '10px' }}>
-              <rect x="5" y="4" width="20" height="16" fill="#FFB6C1" stroke="#000" strokeWidth="2" rx="2" />
-              <rect x="7" y="6" width="16" height="10" fill="#8B4513" stroke="#000" strokeWidth="1" />
-              <rect x="8" y="7" width="3" height="7" fill="#654321" />
-              <rect x="12" y="7" width="3" height="7" fill="#654321" />
-              <rect x="16" y="7" width="3" height="7" fill="#654321" />
-            </svg>
-            <span style={{ fontSize: '14px' }}>Barra com carga</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <svg width="30" height="24" style={{ marginRight: '10px' }}>
-              <rect x="3" y="9" width="24" height="6" fill="#90EE90" stroke="#006400" strokeWidth="2" rx="2" />
-              <line x1="5" y1="12" x2="22" y2="12" stroke="#006400" strokeWidth="2" />
-              <polygon points="20,12 17,10 17,14" fill="#006400" />
-            </svg>
-            <span style={{ fontSize: '14px' }}>Fluxo positivo</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <svg width="30" height="24" style={{ marginRight: '10px' }}>
-              <rect x="3" y="9" width="24" height="6" fill="#FFB6B6" stroke="#8B0000" strokeWidth="2" rx="2" />
-              <line x1="5" y1="12" x2="22" y2="12" stroke="#8B0000" strokeWidth="2" />
-              <polygon points="20,12 17,10 17,14" fill="#8B0000" />
-            </svg>
-            <span style={{ fontSize: '14px' }}>Fluxo negativo</span>
-          </div>
-        </div>
       </div>
 
       <Footer />
@@ -526,6 +445,21 @@ export default function SystemModel() {
           }
         ]}
         onClose={() => setErrorModal({ show: false, message: '' })}
+      />
+      
+      {/* Modal de exportação */}
+      <MessageModal
+        show={exportModal.show}
+        title="Exportação de Relatório"
+        message={exportModal.message}
+        buttons={[
+          {
+            label: 'OK',
+            onClick: () => setExportModal({ show: false, message: '' }),
+            variant: 'primary'
+          }
+        ]}
+        onClose={() => setExportModal({ show: false, message: '' })}
       />
     </div>
   );

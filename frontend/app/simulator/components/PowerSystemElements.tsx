@@ -56,7 +56,7 @@ const fixInitialBusTypes = (mpc: MPC): MPC => {
     const correctType = determineBusType(bus, generator);
     
     if (bus.type !== correctType && bus.type !== 3) {
-      console.log(`Corrigindo tipo da barra ${bus.bus_i}: ${bus.type} → ${correctType}`);
+      // console.log(`Corrigindo tipo da barra ${bus.bus_i}: ${bus.type} → ${correctType}`);
       bus.type = correctType;
     }
   });
@@ -509,7 +509,7 @@ export const BaseBusSystemDiagram: React.FC<BaseBusSystemDiagramProps> = ({
 
   // Função para executar a simulação
   const handleSimulate = useCallback(async () => {
-    console.log('handleSimulate chamado', { externalOnSimulate, externalControls });
+    // console.log('handleSimulate chamado', { externalOnSimulate, externalControls });
     
     if (externalOnSimulate) {
       await externalOnSimulate();
@@ -517,7 +517,7 @@ export const BaseBusSystemDiagram: React.FC<BaseBusSystemDiagramProps> = ({
     }
     
     try {
-      console.log('Iniciando simulação...');
+      // console.log('Iniciando simulação...');
       setSimulationStatus('simulating');
       setSimulationError(null);
       
@@ -529,10 +529,10 @@ export const BaseBusSystemDiagram: React.FC<BaseBusSystemDiagramProps> = ({
         branch: sistemaState.branch
       };
       
-      console.log('MPC preparado:', mpc);
-      console.log('Geradores:', mpc.gen.map(g => ({ bus: g.bus, Pg: g.Pg, Qg: g.Qg, status: g.status })));
+      // console.log('MPC preparado:', mpc);
+      // console.log('Geradores:', mpc.gen.map(g => ({ bus: g.bus, Pg: g.Pg, Qg: g.Qg, status: g.status })));
       const result = await simulateSystem(mpc);
-      console.log('Resultado da simulação:', result);
+      // console.log('Resultado da simulação:', result);
       setSimulationResult(result);
       setSimulationStatus('result');
       
@@ -560,7 +560,7 @@ export const BaseBusSystemDiagram: React.FC<BaseBusSystemDiagramProps> = ({
     if (!externalControls) return;
     
     const handleTrigger = (e: Event) => {
-      console.log('Evento triggerSimulation recebido', e);
+      // console.log('Evento triggerSimulation recebido', e);
       handleSimulate();
     };
     
@@ -573,7 +573,7 @@ export const BaseBusSystemDiagram: React.FC<BaseBusSystemDiagramProps> = ({
     if (!externalControls) return;
     
     const handleBack = (e: Event) => {
-      console.log('Evento backToEdit recebido', e);
+      // console.log('Evento backToEdit recebido', e);
       handleBackToEdit();
     };
     

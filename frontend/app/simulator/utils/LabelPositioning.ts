@@ -217,11 +217,11 @@ export function findBestLabelPositionWithLines(
   // Debug para Barra 6
   const isBus6 = labelText.includes('6');
   if (isBus6) {
-    console.log('=== DEBUG BARRA 6 ===');
-    console.log('Bus position:', busPosition);
-    console.log('Label dimensions:', labelDimensions);
-    console.log('Number of obstacles:', obstacles.length);
-    console.log('Number of lines:', lines.length);
+    // console.log('=== DEBUG BARRA 6 ===');
+    // console.log('Bus position:', busPosition);
+    // console.log('Label dimensions:', labelDimensions);
+    // console.log('Number of obstacles:', obstacles.length);
+    // console.log('Number of lines:', lines.length);
   }
   
   // Tentar cada posição em ordem de preferência
@@ -232,8 +232,8 @@ export function findBestLabelPositionWithLines(
     const labelRect = createLabelRect(labelX, labelY, labelDimensions);
     
     if (isBus6) {
-      console.log(`\nTrying position "${position.name}" at (${labelX}, ${labelY})`);
-      console.log('Label rect:', labelRect);
+      // console.log(`\nTrying position "${position.name}" at (${labelX}, ${labelY})`);
+      // console.log('Label rect:', labelRect);
     }
     
     // Verificar se há colisão com algum obstáculo retangular
@@ -242,7 +242,7 @@ export function findBestLabelPositionWithLines(
       if (rectanglesOverlap(labelRect, obstacle)) {
         hasCollision = true;
         if (isBus6) {
-          console.log('  ❌ Collision with obstacle:', obstacle);
+          // console.log('  ❌ Collision with obstacle:', obstacle);
         }
         break;
       }
@@ -254,7 +254,7 @@ export function findBestLabelPositionWithLines(
         if (rectangleNearLine(labelRect, line.x1, line.y1, line.x2, line.y2, 15)) {
           hasCollision = true;
           if (isBus6) {
-            console.log(`  ❌ Too close to line (${line.x1},${line.y1}) -> (${line.x2},${line.y2})`);
+            // console.log(`  ❌ Too close to line (${line.x1},${line.y1}) -> (${line.x2},${line.y2})`);
           }
           break;
         }
@@ -264,7 +264,7 @@ export function findBestLabelPositionWithLines(
     // Se não há colisão, esta é uma posição válida
     if (!hasCollision) {
       if (isBus6) {
-        console.log(`  ✓ Position "${position.name}" is valid!`);
+        // console.log(`  ✓ Position "${position.name}" is valid!`);
       }
       return { x: labelX, y: labelY, position: position.name };
     }
@@ -272,7 +272,7 @@ export function findBestLabelPositionWithLines(
   
   // Se nenhuma posição está livre, retorna a posição padrão (abaixo)
   if (isBus6) {
-    console.log('⚠️ No valid position found, using default (below)');
+    // console.log('⚠️ No valid position found, using default (below)');
   }
   return { 
     x: busPosition.x, 
@@ -300,10 +300,10 @@ export function findBestLabelPosition(
   // Debug para Barra 6
   const isBus6 = labelText.includes('6');
   if (isBus6) {
-    console.log('=== DEBUG BARRA 6 ===');
-    console.log('Bus position:', busPosition);
-    console.log('Label dimensions:', labelDimensions);
-    console.log('Number of obstacles:', obstacles.length);
+    // console.log('=== DEBUG BARRA 6 ===');
+    // console.log('Bus position:', busPosition);
+    // console.log('Label dimensions:', labelDimensions);
+    // console.log('Number of obstacles:', obstacles.length);
   }
   
   // Tentar cada posição em ordem de preferência
@@ -314,8 +314,8 @@ export function findBestLabelPosition(
     const labelRect = createLabelRect(labelX, labelY, labelDimensions);
     
     if (isBus6) {
-      console.log(`\nTrying position "${position.name}" at (${labelX}, ${labelY})`);
-      console.log('Label rect:', labelRect);
+      // console.log(`\nTrying position "${position.name}" at (${labelX}, ${labelY})`);
+      // console.log('Label rect:', labelRect);
     }
     
     // Verificar se há colisão com algum obstáculo
@@ -324,7 +324,7 @@ export function findBestLabelPosition(
       if (rectanglesOverlap(labelRect, obstacle)) {
         hasCollision = true;
         if (isBus6) {
-          console.log('  ❌ Collision with obstacle:', obstacle);
+          // console.log('  ❌ Collision with obstacle:', obstacle);
         }
         break;
       }
@@ -333,7 +333,7 @@ export function findBestLabelPosition(
     // Se não há colisão, esta é uma posição válida
     if (!hasCollision) {
       if (isBus6) {
-        console.log(`  ✓ Position "${position.name}" is valid!`);
+        // console.log(`  ✓ Position "${position.name}" is valid!`);
       }
       return { x: labelX, y: labelY, position: position.name };
     }
@@ -341,7 +341,7 @@ export function findBestLabelPosition(
   
   // Se nenhuma posição está livre, retorna a posição padrão (abaixo)
   if (isBus6) {
-    console.log('⚠️ No valid position found, using default (below)');
+    // console.log('⚠️ No valid position found, using default (below)');
   }
   return { 
     x: busPosition.x, 
@@ -377,8 +377,8 @@ export function calculateOptimalLabelPositions(
     const isBus6 = bus.id === 6;
     
     if (isBus6) {
-      console.log('\n=== CALCULATING OBSTACLES FOR BUS 6 ===');
-      console.log('Bus 6 position:', bus);
+      // console.log('\n=== CALCULATING OBSTACLES FOR BUS 6 ===');
+      // console.log('Bus 6 position:', bus);
     }
     
     // Adicionar elementos da própria barra
@@ -390,7 +390,7 @@ export function calculateOptimalLabelPositions(
     obstacles.push(...ownElements);
     
     if (isBus6) {
-      console.log('Own elements:', ownElements);
+      // console.log('Own elements:', ownElements);
     }
     
     // Adicionar elementos de barras próximas (dentro de 150px)
@@ -411,7 +411,7 @@ export function calculateOptimalLabelPositions(
         obstacles.push(...otherElements);
         
         if (isBus6) {
-          console.log(`Nearby bus ${otherBus.id} at distance ${distance.toFixed(1)}:`, otherElements);
+          // console.log(`Nearby bus ${otherBus.id} at distance ${distance.toFixed(1)}:`, otherElements);
         }
         
         // Adicionar área do label da barra próxima (posição padrão)
@@ -420,7 +420,7 @@ export function calculateOptimalLabelPositions(
         obstacles.push(otherLabelRect);
         
         if (isBus6) {
-          console.log(`  Label of bus ${otherBus.id}:`, otherLabelRect);
+          // console.log(`  Label of bus ${otherBus.id}:`, otherLabelRect);
         }
       }
     }
@@ -440,15 +440,15 @@ export function calculateOptimalLabelPositions(
           });
           
           if (isBus6) {
-            console.log(`Line to bus ${otherBusId} at (${otherBusPos.x}, ${otherBusPos.y})`);
+            // console.log(`Line to bus ${otherBusId} at (${otherBusPos.x}, ${otherBusPos.y})`);
           }
         }
       }
     }
     
     if (isBus6) {
-      console.log('Total obstacles:', obstacles.length);
-      console.log('Total lines:', lines.length);
+      // console.log('Total obstacles:', obstacles.length);
+      // console.log('Total lines:', lines.length);
     }
     
     // Calcular melhor posição para o label usando verificação mais inteligente

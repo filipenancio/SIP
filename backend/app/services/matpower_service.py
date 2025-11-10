@@ -40,8 +40,66 @@ class MatpowerService:
         except Exception as e:
             raise ValueError(f"Erro ao listar arquivos MATPOWER: {str(e)}")
 
+    def _fix_basekv_in_matpower_content(self, content: str) -> str:
+        """Corrige baseKV zerado diretamente no conteúdo do arquivo MATPOWER"""
+        import re
+        
+        lines = content.split('\n')
+        modified_lines = []
+        in_bus_section = False
+        
+        for line in lines:
+            # Detectar início da seção de barras
+            if 'mpc.bus' in line and '=' in line:
+                in_bus_section = True
+                modified_lines.append(line)
+                continue
+            
+            # Detectar fim da seção de barras (linha com ];)
+            if in_bus_section and '];' in line:
+                in_bus_section = False
+                modified_lines.append(line)
+                continue
+            
+            # Se estamos na seção de barras, processar a linha
+            if in_bus_section and line.strip() and not line.strip().startswith('%'):
+                # Remover tabs e espaços múltiplos, dividir por tabs ou espaços
+                parts = re.split(r'[\t\s]+', line.strip())
+                
+                # Verificar se temos dados de barra (começa com número)
+                if parts and parts[0].replace('.', '').replace('-', '').isdigit():
+                    # Verificar se temos pelo menos 10 colunas (baseKV é a coluna 10)
+                    if len(parts) >= 10:
+                        # Remover ponto-e-vírgula se existir
+                        if parts[-1].endswith(';'):
+                            parts[-1] = parts[-1][:-1]
+                            has_semicolon = True
+                        else:
+                            has_semicolon = False
+                        
+                        # Coluna 10 é índice 9 (0-based)
+                        basekv_value = parts[9]
+                        if basekv_value == '0' or basekv_value == '0.0':
+                            self._debug_print(f"Corrigindo baseKV=0 na barra {parts[0]} para 230 kV")
+                            parts[9] = '230'
+                        
+                        # Reconstruir a linha com tabs
+                        reconstructed = '\t' + '\t'.join(parts)
+                        if has_semicolon:
+                            reconstructed += ';'
+                        modified_lines.append(reconstructed)
+                        continue
+            
+            # Linha não modificada
+            modified_lines.append(line)
+        
+        return '\n'.join(modified_lines)
+
     def simulate_from_filename(self, filename: str) -> PowerSystemResult:
         """Simula um sistema a partir de um arquivo MATPOWER"""
+        import tempfile
+        
+        temp_file = None
         try:
             if not filename.endswith('.m'):
                 raise ValueError(f"Modelo inválido: {filename}. Deve ter extensão .m")
@@ -53,17 +111,35 @@ class MatpowerService:
             if not os.path.isfile(file_path):
                 raise ValueError(f"O caminho {filename} não é um modelo válido")
 
-            # Verifica se o arquivo é legível
+            # Ler e corrigir o arquivo
             try:
                 with open(file_path, 'r') as f:
-                    f.read(1)
+                    content = f.read()
+                
+                # Corrigir baseKV no conteúdo
+                fixed_content = self._fix_basekv_in_matpower_content(content)
+                
+                # Salvar em arquivo temporário
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.m', delete=False) as tmp:
+                    tmp.write(fixed_content)
+                    temp_file = tmp.name
+                
             except Exception as e:
-                raise ValueError(f"Erro ao ler o modelo {filename}: {str(e)}")
+                raise ValueError(f"Erro ao ler/processar o modelo {filename}: {str(e)}")
             
-            net = from_mpc(file_path)
+            # Converter do arquivo temporário corrigido
+            net = from_mpc(temp_file)
             return self._run_simulation(net)
+            
         except Exception as e:
             raise ValueError(f"Erro ao simular a partir do modelo {filename}: {str(e)}")
+        finally:
+            # Limpar arquivo temporário
+            if temp_file and os.path.exists(temp_file):
+                try:
+                    os.unlink(temp_file)
+                except:
+                    pass
 
     def simulate_from_string(self, matpower_string: str) -> PowerSystemResult:
         """Simula um sistema a partir de uma string MATPOWER"""
@@ -75,8 +151,11 @@ class MatpowerService:
             warnings.filterwarnings("ignore", category=FutureWarning, module="pandas")
             warnings.filterwarnings("ignore", category=FutureWarning, module="pandapower")
             
+            # Corrigir baseKV no conteúdo antes de salvar
+            fixed_content = self._fix_basekv_in_matpower_content(matpower_string)
+            
             with tempfile.NamedTemporaryFile(mode='w', suffix='.m', delete=False) as tmp:
-                tmp.write(matpower_string)
+                tmp.write(fixed_content)
                 tmp_path = tmp.name
             
             try:
@@ -85,7 +164,7 @@ class MatpowerService:
                 self._debug_print(f"Rede criada com sucesso. Buses: {len(net.bus)}")
                 return self._run_simulation(net)
             except Exception as e:
-                print(f"ERROR: Erro ao criar/simular rede: {str(e)}")
+                self._debug_print(f"Erro ao criar/simular rede: {str(e)}")
                 raise ValueError(f"Erro ao processar o arquivo MATPOWER: {str(e)}")
             finally:
                 os.unlink(tmp_path)
@@ -116,7 +195,7 @@ class MatpowerService:
                 self._debug_print("=========================")
                 
         except Exception as e:
-            print(f"ERROR: Erro durante simulação: {str(e)}")
+            self._debug_print(f"Erro durante simulação: {str(e)}")
             raise ValueError(f"Erro na simulação do sistema: {str(e)}")
         
         return self._convert_results(net)
@@ -144,7 +223,7 @@ class MatpowerService:
                 )
                 buses.append(bus_result)
             except Exception as e:
-                print(f"ERROR: Erro ao converter bus {i}: {str(e)}")
+                self._debug_print(f"Erro ao converter bus {i}: {str(e)}")
                 raise
         
         # Converter resultados das linhas
@@ -176,9 +255,50 @@ class MatpowerService:
                     )
                     lines.append(line_result)
                 except Exception as e:
-                    print(f"ERROR: Erro ao converter line {i}: {str(e)}")
+                    self._debug_print(f"Erro ao converter line {i}: {str(e)}")
                     raise
             self._debug_print("Conversão das linhas concluída.")
+        
+        # Converter resultados dos transformadores como linhas também
+        if hasattr(net, 'trafo') and len(net.trafo) > 0:
+            self._debug_print(f"Conversão de transformadores como linhas...")
+            self._debug_print(f"Número de transformadores: {len(net.trafo)}")
+            self._debug_print(f"Colunas disponíveis em res_trafo: {list(net.res_trafo.columns)}")
+            
+            for i in range(len(net.trafo)):
+                try:
+                    self._debug_print(f"Convertendo transformador {i}: {net.res_trafo.iloc[i].to_dict()}")
+                    trafo_result = LineResult(
+                        from_bus=int(net.trafo.hv_bus.iloc[i]),  # High voltage bus
+                        to_bus=int(net.trafo.lv_bus.iloc[i]),    # Low voltage bus
+                        p_from_mw=float(net.res_trafo.p_hv_mw.iloc[i]) if 'p_hv_mw' in net.res_trafo.columns else 0.0,
+                        q_from_mvar=float(net.res_trafo.q_hv_mvar.iloc[i]) if 'q_hv_mvar' in net.res_trafo.columns else 0.0,
+                        p_to_mw=float(net.res_trafo.p_lv_mw.iloc[i]) if 'p_lv_mw' in net.res_trafo.columns else 0.0,
+                        q_to_mvar=float(net.res_trafo.q_lv_mvar.iloc[i]) if 'q_lv_mvar' in net.res_trafo.columns else 0.0,
+                        pl_mw=float(net.res_trafo.pl_mw.iloc[i]) if 'pl_mw' in net.res_trafo.columns else 0.0,
+                        ql_mvar=float(net.res_trafo.ql_mvar.iloc[i]) if 'ql_mvar' in net.res_trafo.columns else 0.0,
+                        i_from_ka=float(net.res_trafo.i_hv_ka.iloc[i]) if 'i_hv_ka' in net.res_trafo.columns else 0.0,
+                        i_to_ka=float(net.res_trafo.i_lv_ka.iloc[i]) if 'i_lv_ka' in net.res_trafo.columns else 0.0,
+                        i_ka=max(
+                            float(net.res_trafo.i_hv_ka.iloc[i]) if 'i_hv_ka' in net.res_trafo.columns else 0.0,
+                            float(net.res_trafo.i_lv_ka.iloc[i]) if 'i_lv_ka' in net.res_trafo.columns else 0.0
+                        ),
+                        vm_from_pu=float(net.res_trafo.vm_hv_pu.iloc[i]) if 'vm_hv_pu' in net.res_trafo.columns else 0.0,
+                        va_from_degree=float(net.res_trafo.va_hv_degree.iloc[i]) if 'va_hv_degree' in net.res_trafo.columns else 0.0,
+                        vm_to_pu=float(net.res_trafo.vm_lv_pu.iloc[i]) if 'vm_lv_pu' in net.res_trafo.columns else 0.0,
+                        va_to_degree=float(net.res_trafo.va_lv_degree.iloc[i]) if 'va_lv_degree' in net.res_trafo.columns else 0.0,
+                        loading_percent=float(net.res_trafo.loading_percent.iloc[i]) if 'loading_percent' in net.res_trafo.columns else 0.0,
+                        in_service=bool(net.trafo.in_service.iloc[i])
+                    )
+                    lines.append(trafo_result)
+                    self._debug_print(f"Transformador {i} convertido: {net.trafo.hv_bus.iloc[i]} -> {net.trafo.lv_bus.iloc[i]}")
+                except Exception as e:
+                    self._debug_print(f"Erro ao converter trafo {i}: {str(e)}")
+                    if self.DEBUG_ENABLED:
+                        import traceback
+                        traceback.print_exc()
+                    raise
+            self._debug_print("Conversão dos transformadores concluída.")
         
         # Converter resultados das cargas
         loads = []
@@ -194,7 +314,7 @@ class MatpowerService:
                     )
                     loads.append(load_result)
                 except Exception as e:
-                    print(f"ERROR: Erro ao converter load {i}: {str(e)}")
+                    self._debug_print(f"Erro ao converter load {i}: {str(e)}")
                     raise
         
         # Converter resultados dos geradores
@@ -212,7 +332,7 @@ class MatpowerService:
                     )
                     generators.append(gen_result)
                 except Exception as e:
-                    print(f"ERROR: Erro ao converter gen {i}: {str(e)}")
+                    self._debug_print(f"Erro ao converter gen {i}: {str(e)}")
                     raise
         
         # Converter resultado da barra slack
@@ -226,7 +346,7 @@ class MatpowerService:
                     q_mvar=float(net.res_ext_grid.q_mvar.iloc[0]) if 'q_mvar' in net.res_ext_grid.columns else 0.0
                 )
             except Exception as e:
-                print(f"ERROR: Erro ao converter ext_grid: {str(e)}")
+                self._debug_print(f"Erro ao converter ext_grid: {str(e)}")
                 raise
         
         self._debug_print("Conversão de resultados concluída com sucesso")
