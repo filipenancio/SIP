@@ -1,32 +1,32 @@
-function mpc = case3p
-%CASE3P - personalized 3-bus test case
+function mpc = caso3p
+% Caso teste - Sistemas Eletricos de Potencia -
 
-%% MATPOWER Case Format : Version 2
 mpc.version = '2';
 
-%%-----  Power Flow Data  -----%%
-%% system MVA base
 mpc.baseMVA = 100;
 
-%% bus data
-%	bus_i	type	Pd	    Qd		Gs	Bs	area	Vm		Va		baseKV	zone	Vmax	Vmin
+% Dados de Barras
+% Barra Tipo_barra Pd Qd Gs Bs area |V| teta baseKV zone Vmax Vmin
+
 mpc.bus = [
-	1	3	0.0		0.0		0	0	1	1.05	0.0	230	1	1.1	0.9;
-	2	1	40.0	20.0	0	0	1	1.0		0.0	230	1	1.1	0.9;
-	3	2	25.0	15.0	0	0	1	1.04	0.0	230	1	1.1	0.9;
+1 3  0  0  0 0 1 1 0 230 1 1.1 0.9;
+2 2 50 25  0 0 1 1 0 230 1 1.1 0.9;
+3 1 40 30  0 0 1 1 0 230 1 1.1 0.9;
 ];
 
-%% generator data
-%	bus	Pg	Qg	Qmax	Qmin	Vg	mBase	status	Pmax	Pmin	Pc1	Pc2	Qc1min	Qc1max	Qc2min	Qc2max	ramp_agc	ramp_10	ramp_30	ramp_q	apf
+% Dados de geradores
+% Barra Pg Qg Qmax Qmin Vg(FPO) MBase status (on/off) Pmax
 mpc.gen = [
-	3	35	0	100	-100	1.02	100	1	50	0	0	0	0	0	0	0	0	0	0	0	0;
-	1	0	0	100	-100	1	100	1	0	0	0	0	0	0	0	0	0	0	0	0	0;
+1    0   0  30    -30   1 100 1 500 0 0 0 0;
+2    30   0 127.5 -127.5 1 100 1 300 0 0 0 0;
+3    0   0 390   -390   1 100 1 300 0 0 0 0;
 ];
 
-%% branch data
-%	fbus	tbus	r	x	b	rateA	rateB	rateC	ratio	angle	status	angmin	angmax
+% Dados de linhas
+% De Para R X B ratea rateb ratec ratio Tap status DeltaTETAmin DeltaTETAmax
+
 mpc.branch = [
-	1	2	0.01	0.06	0.03	250	250	250	0	0	1	-360	360;
-	1	3	0.02	0.08	0.025	250	250	250	0	0	1	-360	360;
-	2	3	0.015	0.07	0.02	250	250	250	0	0	1	-360	360;
+1 2 0.0 0.2 0.0  0   0   0  0 0 1 -360 360;
+1 3 0.0 0.4 0.0  0   0   0  0 0 1 -360 360;
+2 3 0.0 0.25 0.0  0   0   0  0 0 1 -360 360;
 ];

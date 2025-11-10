@@ -1,53 +1,13 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import MessageModal from './MessageModal';
+import { EditModalBus, type Bus } from './EditModalBus';
+import { EditModalGenerator, type Generator } from './EditModalGenerator';
+import { EditModalBranch, type Branch } from './EditModalBranch';
+import { EditModalBaseValues } from './EditModalBaseValues';
 
 // Tipos baseados no formato MATPOWER
-interface Bus {
-  bus_i: number;
-  type: number; // 1=PQ, 2=PV, 3=ref
-  Pd: number;
-  Qd: number;
-  Gs: number;
-  Bs: number;
-  area: number;
-  Vm: number;
-  Va: number;
-  baseKV: number;
-  zone: number;
-  Vmax: number;
-  Vmin: number;
-  hasGenerator: boolean;
-}
-
-interface Generator {
-  bus: number;
-  Pg: number;
-  Qg: number;
-  Qmax: number;
-  Qmin: number;
-  Vg: number;
-  mBase: number;
-  status: number;
-  Pmax: number;
-  Pmin: number;
-}
-
-interface Branch {
-  fbus: number;
-  tbus: number;
-  r: number;
-  x: number;
-  b: number;
-  rateA: number;
-  rateB: number;
-  rateC: number;
-  ratio: number;
-  angle: number;
-  status: number;
-  angmin: number;
-  angmax: number;
-}
+// Bus, Generator e Branch são importados dos componentes
 
 interface MPC {
   version: string;
@@ -62,18 +22,19 @@ const sistemaOriginal: MPC = {
   version: '2',
   baseMVA: 100,
   bus: [
-    { bus_i: 1, type: 3, Pd: 0.0, Qd: 0.0, Gs: 0, Bs: 0, area: 1, Vm: 1.05, Va: 0.0, baseKV: 230, zone: 1, Vmax: 1.1, Vmin: 0.9, hasGenerator: true },
-    { bus_i: 2, type: 1, Pd: 40.0, Qd: 20.0, Gs: 0, Bs: 0, area: 1, Vm: 1.0, Va: 0.0, baseKV: 230, zone: 1, Vmax: 1.1, Vmin: 0.9, hasGenerator: false },
-    { bus_i: 3, type: 2, Pd: 25.0, Qd: 15.0, Gs: 0, Bs: 0, area: 1, Vm: 1.04, Va: 0.0, baseKV: 230, zone: 1, Vmax: 1.1, Vmin: 0.9, hasGenerator: true }
+    { bus_i: 1, type: 3, Pd: 0.0, Qd: 0.0, Gs: 0, Bs: 0, area: 1, Vm: 1.0, Va: 0.0, baseKV: 230, zone: 1, Vmax: 1.1, Vmin: 0.9, hasGenerator: true },
+    { bus_i: 2, type: 2, Pd: 50.0, Qd: 25.0, Gs: 0, Bs: 0, area: 1, Vm: 1.0, Va: 0.0, baseKV: 230, zone: 1, Vmax: 1.1, Vmin: 0.9, hasGenerator: true },
+    { bus_i: 3, type: 1, Pd: 40.0, Qd: 30.0, Gs: 0, Bs: 0, area: 1, Vm: 1.0, Va: 0.0, baseKV: 230, zone: 1, Vmax: 1.1, Vmin: 0.9, hasGenerator: true }
   ],
   gen: [
-    { bus: 3, Pg: 35, Qg: 0, Qmax: 100, Qmin: -100, Vg: 1.02, mBase: 100, status: 1, Pmax: 50, Pmin: 0 },
-    { bus: 1, Pg: 0, Qg: 0, Qmax: 100, Qmin: -100, Vg: 1, mBase: 100, status: 1, Pmax: 0, Pmin: 0 }
+    { bus: 1, Pg: 0, Qg: 0, Qmax: 30, Qmin: -30, Vg: 1, mBase: 100, status: 1, Pmax: 500, Pmin: 0 },
+    { bus: 2, Pg: 30, Qg: 0, Qmax: 127.5, Qmin: -127.5, Vg: 1, mBase: 100, status: 1, Pmax: 300, Pmin: 0 },
+    { bus: 3, Pg: 0, Qg: 0, Qmax: 390, Qmin: -390, Vg: 1, mBase: 100, status: 1, Pmax: 300, Pmin: 0 }
   ],
   branch: [
-    { fbus: 1, tbus: 2, r: 0.01, x: 0.06, b: 0.03, rateA: 250, rateB: 250, rateC: 250, ratio: 0, angle: 0, status: 1, angmin: -360, angmax: 360 },
-    { fbus: 1, tbus: 3, r: 0.02, x: 0.08, b: 0.025, rateA: 250, rateB: 250, rateC: 250, ratio: 0, angle: 0, status: 1, angmin: -360, angmax: 360 },
-    { fbus: 2, tbus: 3, r: 0.015, x: 0.07, b: 0.02, rateA: 250, rateB: 250, rateC: 250, ratio: 0, angle: 0, status: 1, angmin: -360, angmax: 360 }
+    { fbus: 1, tbus: 2, r: 0.0, x: 0.2, b: 0.0, rateA: 0, rateB: 0, rateC: 0, ratio: 0, angle: 0, status: 1, angmin: -360, angmax: 360, baseMVA: 100 },
+    { fbus: 1, tbus: 3, r: 0.0, x: 0.4, b: 0.0, rateA: 0, rateB: 0, rateC: 0, ratio: 0, angle: 0, status: 1, angmin: -360, angmax: 360, baseMVA: 100 },
+    { fbus: 2, tbus: 3, r: 0.0, x: 0.25, b: 0.0, rateA: 0, rateB: 0, rateC: 0, ratio: 0, angle: 0, status: 1, angmin: -360, angmax: 360, baseMVA: 100 }
   ]
 };
 
@@ -315,202 +276,6 @@ export const TransmissionLineNeutral: React.FC<{
   );
 };
 
-// Componente Switch estilo iPhone
-const ToggleSwitch: React.FC<{
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  disabled?: boolean;
-}> = ({ checked, onChange, disabled = false }) => {
-  return (
-    <div
-      onClick={() => !disabled && onChange(!checked)}
-      style={{
-        width: '50px',
-        height: '25px',
-        borderRadius: '25px',
-        backgroundColor: checked ? '#007AFF' : '#E5E5E5',
-        position: 'relative',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        transition: 'background-color 0.3s ease',
-        opacity: disabled ? 0.6 : 1
-      }}
-    >
-      <div
-        style={{
-          width: '21px',
-          height: '21px',
-          borderRadius: '50%',
-          backgroundColor: 'white',
-          position: 'absolute',
-          top: '2px',
-          left: checked ? '27px' : '2px',
-          transition: 'left 0.3s ease',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-        }}
-      />
-    </div>
-  );
-};
-
-// Componente para o conteúdo do modal de edição
-const EditModalContent: React.FC<{
-  type: 'bus' | 'generator' | 'branch' | '';
-  data: any;
-  onChange: (newData: any) => void;
-}> = ({ type, data, onChange }) => {
-  if (!data) return null;
-
-  const handleFieldChange = (field: string, value: string | number) => {
-    const newData = { ...data };
-    newData[field] = typeof value === 'string' ? parseFloat(value) || 0 : value;
-    onChange(newData);
-  };
-
-  const renderField = (label: string, field: string, unit?: string) => (
-    <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
-      <label style={{ 
-        minWidth: '90px', 
-        marginRight: '10px', 
-        fontWeight: 'bold',
-        fontSize: '12px',
-        color: '#000'
-      }}>
-        {label}:
-      </label>
-      <input
-        type="number"
-        step="0.001"
-        value={data[field] || 0}
-        onChange={(e) => handleFieldChange(field, e.target.value)}
-        style={{
-          flex: 1,
-          padding: '6px 8px',
-          border: '1px solid #ccc',
-          borderRadius: '4px',
-          fontSize: '12px'
-        }}
-      />
-      {unit && (
-        <span style={{ 
-          marginLeft: '8px', 
-          fontSize: '12px', 
-          color: '#666',
-          minWidth: '40px'
-        }}>
-          {unit}
-        </span>
-      )}
-    </div>
-  );
-
-  if (type === 'bus') {
-    const getBusTypeName = (busType: number) => {
-      switch (busType) {
-        case 3: return 'Referência (Slack)';
-        case 2: return 'PV (Tensão Controlada)';
-        case 1: return 'PQ (Carga)';
-        default: return 'Desconhecido';
-      }
-    };
-
-    return (
-      <div>
-        {/* Tipo da barra (somente leitura) */}
-        <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
-          <label style={{ 
-            minWidth: '90px', 
-            marginRight: '10px', 
-            fontWeight: 'bold',
-            fontSize: '12px',
-            color: '#000'
-          }}>
-            Tipo:
-          </label>
-          <span style={{
-            flex: 1,
-            padding: '6px 8px',
-            backgroundColor: '#f5f5f5',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            fontSize: '12px',
-            color: '#666'
-          }}>
-            {getBusTypeName(data.type)}
-          </span>
-          <span style={{ 
-            marginLeft: '8px', 
-            fontSize: '12px', 
-            color: '#666',
-            minWidth: '40px'
-          }}>
-            {/* Espaço para manter alinhamento com os outros campos */}
-          </span>
-        </div>
-
-        {renderField('Tensão', 'Vm', 'pu')}
-        {renderField('Ângulo', 'Va', '°')}
-        {renderField('Pd', 'Pd', 'MW')}
-        {renderField('Qd', 'Qd', 'MVAr')}
-        {renderField('Base', 'baseKV', 'kV')}
-        
-        {/* Campo do gerador */}
-        <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
-          <label style={{ 
-            minWidth: '90px', 
-            marginRight: '10px', 
-            fontWeight: 'bold',
-            fontSize: '12px',
-            color: '#000'
-          }}>
-            Gerador:
-          </label>
-          <ToggleSwitch
-            checked={data.hasGenerator}
-            onChange={(checked) => onChange({ ...data, hasGenerator: checked })}
-            disabled={data.type === 3} // Barra slack sempre tem gerador
-          />
-          <span style={{ 
-            marginLeft: '8px', 
-            fontSize: '12px', 
-            color: '#666',
-            minWidth: '40px'
-          }}>
-            {data.type === 3 ? '(obrigatório)' : ''}
-          </span>
-        </div>
-      </div>
-    );
-  }
-
-  if (type === 'generator') {
-    return (
-      <div>
-        {renderField('Pg', 'Pg', 'MW')}
-        {renderField('Qg', 'Qg', 'MVAr')}
-        {renderField('Pmax', 'Pmax', 'MW')}
-        {renderField('Pmin', 'Pmin', 'MW')}
-        {renderField('Qmax', 'Qmax', 'MVAr')}
-        {renderField('Qmin', 'Qmin', 'MVAr')}
-      </div>
-    );
-  }
-
-  if (type === 'branch') {
-    return (
-      <div>
-        {renderField('Resistência', 'r', 'pu')}
-        {renderField('Reatância', 'x', 'pu')}
-        {renderField('Susceptância', 'b', 'pu')}
-        {renderField('Capacidade A', 'rateA', 'MVA')}
-        {renderField('Capacidade B', 'rateB', 'MVA')}
-        {renderField('Capacidade C', 'rateC', 'MVA')}
-      </div>
-    );
-  }
-
-  return null;
-};
-
 // Componente para o Diagrama do Sistema de 3 Barras
 export const ThreeBusSystemDiagram: React.FC = () => {
   // Posições das barras no diagrama
@@ -574,6 +339,7 @@ export const ThreeBusSystemDiagram: React.FC = () => {
   const [zoom, setZoom] = useState(initialView.zoom);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [hasDragged, setHasDragged] = useState(false);
   const [tooltip, setTooltip] = useState({ show: false, x: 0, y: 0, content: null as React.ReactNode });
   const [editModal, setEditModal] = useState({ 
     show: false, 
@@ -582,12 +348,21 @@ export const ThreeBusSystemDiagram: React.FC = () => {
     originalData: null as any
   });
   const [confirmModal, setConfirmModal] = useState({ show: false });
+  const [confirmBaseRestoreModal, setConfirmBaseRestoreModal] = useState({ show: false });
   const [generatorEditConfirmModal, setGeneratorEditConfirmModal] = useState({ show: false, generator: null as Generator | null });
   const [sistemaState, setSistemaState] = useState(() => createDeepCopy(sistemaOriginal));
+  const [baseModal, setBaseModal] = useState({
+    show: false,
+    baseMVA: sistemaOriginal.baseMVA,
+    baseKV: sistemaOriginal.bus[0]?.baseKV || 230,
+    originalBaseMVA: sistemaOriginal.baseMVA,
+    originalBaseKV: sistemaOriginal.bus[0]?.baseKV || 230
+  });
   const svgRef = useRef<SVGSVGElement>(null);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     setIsDragging(true);
+    setHasDragged(false);
     setDragStart({
       x: e.clientX - pan.x,
       y: e.clientY - pan.y
@@ -597,6 +372,7 @@ export const ThreeBusSystemDiagram: React.FC = () => {
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isDragging) return;
     
+    setHasDragged(true);
     setPan({
       x: e.clientX - dragStart.x,
       y: e.clientY - dragStart.y
@@ -918,6 +694,72 @@ export const ThreeBusSystemDiagram: React.FC = () => {
     return sistemaState.gen.some((gen: Generator) => gen.bus === busNumber && gen.status === 1);
   };
 
+  // Funções para o modal de bases
+  const openBaseModal = () => {
+    setBaseModal({
+      show: true,
+      baseMVA: sistemaState.baseMVA,
+      baseKV: sistemaState.bus[0]?.baseKV || 230,
+      originalBaseMVA: sistemaOriginal.baseMVA,
+      originalBaseKV: sistemaOriginal.bus[0]?.baseKV || 230
+    });
+  };
+
+  const closeBaseModal = () => {
+    // Ao fechar o modal, restaurar os valores do sistema atual (desfazer alterações não salvas)
+    setBaseModal(prev => ({
+      ...prev,
+      show: false,
+      baseMVA: sistemaState.baseMVA,
+      baseKV: sistemaState.bus[0]?.baseKV || 230
+    }));
+  };
+
+  const saveBaseModal = () => {
+    const newSistema = { ...sistemaState };
+    
+    // Atualizar baseMVA do sistema
+    newSistema.baseMVA = baseModal.baseMVA;
+    
+    // Atualizar mBase de todos os geradores com o novo baseMVA
+    newSistema.gen = newSistema.gen.map((gen: Generator) => ({
+      ...gen,
+      mBase: baseModal.baseMVA
+    }));
+    
+    // Atualizar baseKV em todas as barras
+    newSistema.bus = newSistema.bus.map((bus: Bus) => ({
+      ...bus,
+      baseKV: baseModal.baseKV
+    }));
+    
+    // Atualizar baseMVA em todas as linhas
+    newSistema.branch = newSistema.branch.map((branch: Branch) => ({
+      ...branch,
+      baseMVA: baseModal.baseMVA
+    }));
+    
+    setSistemaState(newSistema);
+    closeBaseModal();
+  };
+
+  const restoreBaseValues = () => {
+    setConfirmBaseRestoreModal({ show: true });
+  };
+
+  const confirmRestoreBaseValues = () => {
+    setBaseModal(prev => ({
+      ...prev,
+      baseMVA: prev.originalBaseMVA,
+      baseKV: prev.originalBaseKV
+    }));
+    setConfirmBaseRestoreModal({ show: false });
+  };
+
+  const cancelRestoreBaseValues = () => {
+    setConfirmBaseRestoreModal({ show: false });
+  };
+
   // Função para verificar se uma barra tem carga
   const hasLoad = (busNumber: number) => {
     const bus = sistemaState.bus.find((b: Bus) => b.bus_i === busNumber);
@@ -931,21 +773,23 @@ export const ThreeBusSystemDiagram: React.FC = () => {
 
   // Função para criar tooltip de barra
   const createBusTooltip = (bus: Bus) => (
-    <div>
-      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Barra {bus.bus_i}</div>
-      <div>Tipo: {bus.type === 3 ? 'Referência (Slack)' : bus.type === 2 ? 'PV (Tensão Controlada)' : 'PQ (Carga)'}</div>
-      <div>Tensão: {bus.Vm.toFixed(3)} pu</div>
-      <div>Ângulo: {bus.Va.toFixed(2)}°</div>
+    <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
+      <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '14px' }}>Barra {bus.bus_i}</div>
+      <div>Tipo: {bus.type === 3 ? 'Slack' : bus.type === 2 ? 'PV' : 'PQ'}</div>
+      <div>Base kV: {bus.baseKV} kV</div>
       <div>Pd: {bus.Pd.toFixed(1)} MW</div>
       <div>Qd: {bus.Qd.toFixed(1)} MVAr</div>
-      <div>Base: {bus.baseKV} kV</div>
+      <div>V: {bus.Vm.toFixed(3)} pu</div>
+      <div>θ: {bus.Va.toFixed(2)}°</div>
+      <div>Vmax: {bus.Vmax.toFixed(2)} pu</div>
+      <div>Vmin: {bus.Vmin.toFixed(2)} pu</div>
     </div>
   );
 
   // Função para criar tooltip de gerador
   const createGeneratorTooltip = (gen: Generator) => (
-    <div>
-      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Gerador - Barra {gen.bus}</div>
+    <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
+      <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '14px' }}>Gerador - Barra {gen.bus}</div>
       <div>Pg: {gen.Pg.toFixed(1)} MW</div>
       <div>Qg: {gen.Qg.toFixed(1)} MVAr</div>
       <div>Pmax: {gen.Pmax.toFixed(1)} MW</div>
@@ -958,13 +802,16 @@ export const ThreeBusSystemDiagram: React.FC = () => {
 
   // Função para criar tooltip de linha
   const createBranchTooltip = (branch: Branch) => (
-    <div>
-      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Linha {branch.fbus} → {branch.tbus}</div>
-      <div>Resistência: {branch.r.toFixed(4)} pu</div>
-      <div>Reatância: {branch.x.toFixed(4)} pu</div>
-      <div>Susceptância: {branch.b.toFixed(4)} pu</div>
-      <div>Rating A: {branch.rateA.toFixed(0)} MVA</div>
-      <div>Status: {branch.status === 1 ? 'Ativo' : 'Inativo'}</div>
+    <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
+      <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '14px' }}>Linha {branch.fbus} → {branch.tbus}</div>
+      <div>Base MVA: {branch.baseMVA || 100} MVA</div>
+      <div>R: {branch.r.toFixed(4)} pu</div>
+      <div>X: {branch.x.toFixed(4)} pu</div>
+      <div>B: {branch.b.toFixed(4)} pu</div>
+      <div>Rate A: {branch.rateA.toFixed(0)} MVA</div>
+      <div>Rate B: {branch.rateB.toFixed(0)} MVA</div>
+      <div>Rate C: {branch.rateC.toFixed(0)} MVA</div>
+      <div>Tap: {branch.angle.toFixed(2)}°</div>
     </div>
   );
 
@@ -1056,6 +903,29 @@ export const ThreeBusSystemDiagram: React.FC = () => {
         </div>
       </div>
 
+      {/* Informações Base */}
+      <div 
+        onClick={openBaseModal}
+        style={{
+          position: 'absolute', bottom: '15px', left: '15px', zIndex: 10,
+          backgroundColor: 'rgba(245, 245, 245, 0.95)', border: '1px solid #ccc',
+          borderRadius: '4px', padding: '12px', width: '170px', fontSize: '10px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          cursor: 'pointer',
+          transition: 'background-color 0.2s'
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(230, 230, 230, 0.95)'}
+        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(245, 245, 245, 0.95)'}
+      >
+        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '11px', marginBottom: '10px', color: '#333' }}>Valores Base</div>
+        <div style={{ marginBottom: '6px', color: '#333' }}>
+          <span style={{ fontWeight: 'bold' }}>Base MVA:</span> {sistemaState.baseMVA} MVA
+        </div>
+        <div style={{ color: '#333' }}>
+          <span style={{ fontWeight: 'bold' }}>Base kV:</span> {sistemaState.bus[0]?.baseKV || 230} kV
+        </div>
+      </div>
+
       {/* Diagrama */}
       <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <svg 
@@ -1090,7 +960,9 @@ export const ThreeBusSystemDiagram: React.FC = () => {
                 label={`L${branch.fbus}-${branch.tbus}`}
                 branch={branch}
                 onHover={(e, show) => handleTooltip(e, show, show ? createBranchTooltip(branch) : undefined)}
-                onClick={() => openEditModal('branch', branch)}
+                onClick={() => {
+                  if (!hasDragged) openEditModal('branch', branch);
+                }}
               />
             );
           })}
@@ -1107,7 +979,9 @@ export const ThreeBusSystemDiagram: React.FC = () => {
                 label={`Barra ${bus.bus_i}`}
                 bus={bus}
                 onHover={(e, show) => handleTooltip(e, show, show ? createBusTooltip(bus) : undefined)}
-                onClick={() => openEditModal('bus', bus)}
+                onClick={() => {
+                  if (!hasDragged) openEditModal('bus', bus);
+                }}
               />
             );
           })}
@@ -1124,7 +998,9 @@ export const ThreeBusSystemDiagram: React.FC = () => {
                 y={pos.y - 30}
                 generator={generator}
                 onHover={(e, show) => handleTooltip(e, show, show ? createGeneratorTooltip(generator) : undefined)}
-                onClick={() => openEditModal('generator', generator)}
+                onClick={() => {
+                  if (!hasDragged) openEditModal('generator', generator);
+                }}
               />
             );
           })}
@@ -1140,7 +1016,9 @@ export const ThreeBusSystemDiagram: React.FC = () => {
                 y={pos.y - 30}
                 bus={bus}
                 onHover={(e, show) => handleTooltip(e, show, show ? createBusTooltip(bus) : undefined)}
-                onClick={() => openEditModal('bus', bus)}
+                onClick={() => {
+                  if (!hasDragged) openEditModal('bus', bus);
+                }}
               />
             );
           })}
@@ -1148,170 +1026,45 @@ export const ThreeBusSystemDiagram: React.FC = () => {
         </svg>
       </div>
 
-      {/* Modal de Edição */}
-      {editModal.show && createPortal(
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(64, 64, 64, 0.8)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 999999
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '20px',
-            borderRadius: '8px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-            minWidth: '400px',
-            maxWidth: '500px',
-            position: 'relative'
-          }}>
-            {/* Botão de restaurar dados originais */}
-            <button
-              onClick={restoreOriginalData}
-              title="Restaurar dados originais"
-              onMouseDown={(e) => {
-                e.currentTarget.style.transform = 'scale(0.9) rotate(180deg)';
-              }}
-              onMouseUp={(e) => {
-                e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
-                e.currentTarget.style.backgroundColor = 'white';
-                e.currentTarget.style.borderColor = '#666';
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#f0f0f0';
-                e.currentTarget.style.borderColor = '#333';
-              }}
-              style={{
-                position: 'absolute',
-                top: '15px',
-                right: '15px',
-                width: '30px',
-                height: '30px',
-                borderRadius: '50%',
-                border: '2px solid #666',
-                backgroundColor: 'white',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '16px',
-                transition: 'all 0.2s ease',
-                transform: 'scale(1) rotate(0deg)'
-              }}
-            >
-              ↻
-            </button>
+      {/* Modais de Edição */}
+      <EditModalBus
+        show={editModal.show && editModal.type === 'bus'}
+        data={editModal.data}
+        onClose={closeEditModal}
+        onSave={saveEditModal}
+        onRestore={restoreOriginalData}
+        onChange={(newData) => setEditModal(prev => ({ ...prev, data: newData }))}
+      />
 
-            {/* Título centralizado */}
-            <div style={{
-              textAlign: 'center',
-              marginBottom: '20px',
-              width: 'calc(100% - 60px)', // Compensa o espaço do botão de restaurar (30px + 15px margin de cada lado)
-              marginLeft: '30px' // Centraliza considerando o botão
-            }}>
-              <h3 style={{ 
-                margin: 0, 
-                fontSize: '18px', 
-                fontWeight: 'bold', 
-                color: '#333' 
-              }}>
-                {editModal.type === 'bus' && `Edição de Barra (Barra ${editModal.data?.bus_i})`}
-                {editModal.type === 'generator' && `Edição de Gerador (Barra ${editModal.data?.bus})`}
-                {editModal.type === 'branch' && `Edição de Linha (L${editModal.data?.fbus}-${editModal.data?.tbus})`}
-              </h3>
-            </div>
+      <EditModalGenerator
+        show={editModal.show && editModal.type === 'generator'}
+        data={editModal.data}
+        onClose={closeEditModal}
+        onSave={saveEditModal}
+        onRestore={restoreOriginalData}
+        onChange={(newData) => setEditModal(prev => ({ ...prev, data: newData }))}
+      />
 
-            {/* Linha separadora após título */}
-            <div style={{
-              height: '1px',
-              backgroundColor: '#d3d3d3',
-              margin: '4px 0',
-              marginBottom: '20px'
-            }}></div>
+      <EditModalBranch
+        show={editModal.show && editModal.type === 'branch'}
+        data={editModal.data}
+        onClose={closeEditModal}
+        onSave={saveEditModal}
+        onRestore={restoreOriginalData}
+        onChange={(newData) => setEditModal(prev => ({ ...prev, data: newData }))}
+      />
 
-            <EditModalContent 
-              type={editModal.type}
-              data={editModal.data}
-              onChange={(newData) => setEditModal(prev => ({ ...prev, data: newData }))}
-            />
-
-            {/* Linha separadora antes dos botões */}
-            <div style={{
-              height: '1px',
-              backgroundColor: '#d3d3d3',
-              margin: '4px 0',
-              marginTop: '20px',
-              marginBottom: '16px'
-            }}></div>
-
-            {/* Botões de ação */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'center',
-              gap: '20px'
-            }}>
-              <button
-                onClick={closeEditModal}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#b0b0b0';
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#c8c8c8ff';
-                  e.currentTarget.style.transform = 'scale(1)';
-                }}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#c8c8c8ff',
-                  color: '#cd4444ff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                  minWidth: '100px',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={saveEditModal}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#004b8d';
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#003366';
-                  e.currentTarget.style.transform = 'scale(1)';
-                }}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#003366',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                  minWidth: '100px',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Salvar
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      {/* Modal de Edição de Bases */}
+      <EditModalBaseValues
+        show={baseModal.show}
+        baseMVA={baseModal.baseMVA}
+        baseKV={baseModal.baseKV}
+        onClose={closeBaseModal}
+        onSave={saveBaseModal}
+        onRestore={restoreBaseValues}
+        onChangeBaseMVA={(value) => setBaseModal(prev => ({ ...prev, baseMVA: value }))}
+        onChangeBaseKV={(value) => setBaseModal(prev => ({ ...prev, baseKV: value }))}
+      />
 
       <MessageModal
         show={confirmModal.show}
@@ -1326,6 +1079,29 @@ export const ThreeBusSystemDiagram: React.FC = () => {
           {
             label: 'Sim',
             onClick: confirmRestore,
+            variant: 'primary'
+          }
+        ]}
+      />
+
+      <MessageModal
+        show={confirmBaseRestoreModal.show}
+        title="Restauração dos Valores Base"
+        message={
+          <>
+            Tem certeza que deseja restaurar os valores base?<br/><br/>
+            Obs.: Os valores de Base MVA e Base kV voltarão ao estado inicial.
+          </>
+        }
+        buttons={[
+          {
+            label: 'Não',
+            onClick: cancelRestoreBaseValues,
+            variant: 'secondary'
+          },
+          {
+            label: 'Sim',
+            onClick: confirmRestoreBaseValues,
             variant: 'primary'
           }
         ]}
