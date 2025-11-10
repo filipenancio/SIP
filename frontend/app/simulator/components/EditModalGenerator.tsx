@@ -1,5 +1,6 @@
 import React from 'react';
 import { EditModalBase } from './EditModalBase';
+import { NumericInput } from './NumericInput';
 
 export interface Generator {
   bus: number;
@@ -25,51 +26,45 @@ export interface Generator {
   apf?: number;
 }
 
+interface GeneratorResultData {
+  bus_id: number;
+  p_mw: number;
+  q_mvar: number;
+  vm_pu: number;
+}
+
+interface ExtGridResultData {
+  bus_id: number;
+  p_mw: number;
+  q_mvar: number;
+}
+
 interface EditModalGeneratorProps {
   show: boolean;
   data: Generator | null;
+  generatorResult?: GeneratorResultData;
+  extGridResult?: ExtGridResultData;
   onClose: () => void;
-  onSave: () => void;
-  onRestore: () => void;
-  onChange: (newData: Generator) => void;
+  onSave?: () => void;
+  onRestore?: () => void;
+  onChange?: (newData: Generator) => void;
+  viewOnly?: boolean;
 }
-
-const NumericInput: React.FC<{
-  value: number;
-  onChange: (value: number) => void;
-  min?: number;
-  max?: number;
-  step?: number;
-  style?: React.CSSProperties;
-}> = ({ value, onChange, min, max, step = 0.01, style }) => {
-  return (
-    <input
-      type="number"
-      value={value}
-      onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-      min={min}
-      max={max}
-      step={step}
-      style={{
-        padding: '6px 8px',
-        border: '1px solid #ccc',
-        borderRadius: '4px',
-        fontSize: '12px',
-        ...style
-      }}
-    />
-  );
-};
 
 export const EditModalGenerator: React.FC<EditModalGeneratorProps> = ({
   show,
   data,
+  generatorResult,
+  extGridResult,
   onClose,
   onSave,
   onRestore,
-  onChange
+  onChange,
+  viewOnly = false
 }) => {
   if (!data) return null;
+
+  const isResultView = viewOnly;
 
   const renderField = (label: string, key: keyof Generator, unit: string, min?: number, max?: number, step?: number) => (
     <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
@@ -84,11 +79,12 @@ export const EditModalGenerator: React.FC<EditModalGeneratorProps> = ({
       </label>
       <NumericInput
         value={data[key] as number}
-        onChange={(value: number) => onChange({ ...data, [key]: value })}
+        onChange={viewOnly ? () => {} : (value: number) => onChange?.({ ...data, [key]: value })}
         min={min}
         max={max}
         step={step || 0.01}
-        style={{ width: '200px' }}
+        disabled={viewOnly}
+        style={{ width: '200px', backgroundColor: viewOnly ? '#f5f5f5' : 'white', cursor: viewOnly ? 'default' : 'text' }}
       />
       <span style={{ 
         marginLeft: '8px', 
@@ -108,6 +104,7 @@ export const EditModalGenerator: React.FC<EditModalGeneratorProps> = ({
       onClose={onClose}
       onSave={onSave}
       onRestore={onRestore}
+      viewOnly={viewOnly}
     >
       <div>
         {/* Campo mBase - somente leitura */}
@@ -142,6 +139,105 @@ export const EditModalGenerator: React.FC<EditModalGeneratorProps> = ({
           </span>
         </div>
 
+        {isResultView ? (
+          // Visualização de Resultado
+          <>
+            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
+              <label style={{ 
+                minWidth: '130px', 
+                marginRight: '10px', 
+                fontWeight: 'bold',
+                fontSize: '12px',
+                color: '#000'
+              }}>
+                P:
+              </label>
+              <span style={{
+                width: '200px',
+                padding: '6px 8px',
+                backgroundColor: '#f5f5f5',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                fontSize: '12px',
+                color: '#666'
+              }}>
+                {generatorResult ? generatorResult.p_mw.toFixed(2) : extGridResult ? extGridResult.p_mw.toFixed(2) : '0.00'}
+              </span>
+              <span style={{ 
+                marginLeft: '8px', 
+                fontSize: '12px', 
+                color: '#666',
+                minWidth: '50px'
+              }}>
+                MW
+              </span>
+            </div>
+
+            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
+              <label style={{ 
+                minWidth: '130px', 
+                marginRight: '10px', 
+                fontWeight: 'bold',
+                fontSize: '12px',
+                color: '#000'
+              }}>
+                Q:
+              </label>
+              <span style={{
+                width: '200px',
+                padding: '6px 8px',
+                backgroundColor: '#f5f5f5',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                fontSize: '12px',
+                color: '#666'
+              }}>
+                {generatorResult ? generatorResult.q_mvar.toFixed(2) : extGridResult ? extGridResult.q_mvar.toFixed(2) : '0.00'}
+              </span>
+              <span style={{ 
+                marginLeft: '8px', 
+                fontSize: '12px', 
+                color: '#666',
+                minWidth: '50px'
+              }}>
+                MVAr
+              </span>
+            </div>
+
+            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
+              <label style={{ 
+                minWidth: '130px', 
+                marginRight: '10px', 
+                fontWeight: 'bold',
+                fontSize: '12px',
+                color: '#000'
+              }}>
+                V:
+              </label>
+              <span style={{
+                width: '200px',
+                padding: '6px 8px',
+                backgroundColor: '#f5f5f5',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                fontSize: '12px',
+                color: '#666'
+              }}>
+                {generatorResult ? generatorResult.vm_pu.toFixed(3) : '1.000'}
+              </span>
+              <span style={{ 
+                marginLeft: '8px', 
+                fontSize: '12px', 
+                color: '#666',
+                minWidth: '50px'
+              }}>
+                pu
+              </span>
+            </div>
+          </>
+        ) : (
+          // Visualização de Edição
+          <>
         {renderField('Potência Ativa', 'Pg', 'MW', 0)}
         {renderField('Potência Reativa', 'Qg', 'MVAr')}
         {renderField('Tensão', 'Vg', 'pu', 0.8, 1.2, 0.01)}
@@ -149,6 +245,8 @@ export const EditModalGenerator: React.FC<EditModalGeneratorProps> = ({
         {renderField('Potência Mínima', 'Pmin', 'MW', 0)}
         {renderField('Reativa Máxima', 'Qmax', 'MVAr')}
         {renderField('Reativa Mínima', 'Qmin', 'MVAr')}
+          </>
+        )}
       </div>
     </EditModalBase>
   );

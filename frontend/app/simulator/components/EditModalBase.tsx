@@ -5,9 +5,10 @@ interface EditModalBaseProps {
   show: boolean;
   title: string;
   onClose: () => void;
-  onSave: () => void;
-  onRestore: () => void;
+  onSave?: () => void;
+  onRestore?: () => void;
   children: ReactNode;
+  viewOnly?: boolean;
 }
 
 export const EditModalBase: React.FC<EditModalBaseProps> = ({
@@ -16,7 +17,8 @@ export const EditModalBase: React.FC<EditModalBaseProps> = ({
   onClose,
   onSave,
   onRestore,
-  children
+  children,
+  viewOnly = false
 }) => {
   if (!show) return null;
 
@@ -42,52 +44,54 @@ export const EditModalBase: React.FC<EditModalBaseProps> = ({
         maxWidth: '500px',
         position: 'relative'
       }}>
-        {/* Botão de restaurar dados originais */}
-        <button
-          onClick={onRestore}
-          title="Restaurar dados originais"
-          onMouseDown={(e) => {
-            e.currentTarget.style.transform = 'scale(0.9) rotate(180deg)';
-          }}
-          onMouseUp={(e) => {
-            e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
-            e.currentTarget.style.backgroundColor = 'white';
-            e.currentTarget.style.borderColor = '#666';
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#f0f0f0';
-            e.currentTarget.style.borderColor = '#333';
-          }}
-          style={{
-            position: 'absolute',
-            top: '15px',
-            right: '15px',
-            width: '30px',
-            height: '30px',
-            borderRadius: '50%',
-            border: '2px solid #666',
-            backgroundColor: 'white',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '16px',
-            transition: 'all 0.2s ease',
-            transform: 'scale(1) rotate(0deg)'
-          }}
-        >
-          ↻
-        </button>
+        {/* Botão de restaurar dados originais - apenas em modo edição */}
+        {!viewOnly && onRestore && (
+          <button
+            onClick={onRestore}
+            title="Restaurar dados originais"
+            onMouseDown={(e) => {
+              e.currentTarget.style.transform = 'scale(0.9) rotate(180deg)';
+            }}
+            onMouseUp={(e) => {
+              e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
+              e.currentTarget.style.backgroundColor = 'white';
+              e.currentTarget.style.borderColor = '#666';
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#f0f0f0';
+              e.currentTarget.style.borderColor = '#333';
+            }}
+            style={{
+              position: 'absolute',
+              top: '15px',
+              right: '15px',
+              width: '30px',
+              height: '30px',
+              borderRadius: '50%',
+              border: '2px solid #666',
+              backgroundColor: 'white',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '16px',
+              transition: 'all 0.2s ease',
+              transform: 'scale(1) rotate(0deg)'
+            }}
+          >
+            ↻
+          </button>
+        )}
 
         {/* Título centralizado */}
         <div style={{
           textAlign: 'center',
           marginBottom: '20px',
-          width: 'calc(100% - 60px)',
-          marginLeft: '30px'
+          width: viewOnly ? '100%' : 'calc(100% - 60px)',
+          marginLeft: viewOnly ? '0' : '30px'
         }}>
           <h3 style={{ 
             margin: 0, 
@@ -95,7 +99,7 @@ export const EditModalBase: React.FC<EditModalBaseProps> = ({
             fontWeight: 'bold', 
             color: '#333' 
           }}>
-            {title}
+            {viewOnly ? title.replace('Edição', 'Visualização') : title}
           </h3>
         </div>
 
@@ -125,51 +129,81 @@ export const EditModalBase: React.FC<EditModalBaseProps> = ({
           justifyContent: 'center',
           gap: '20px'
         }}>
-          <button
-            onClick={onClose}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#888',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              width: '120px',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#666';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#888';
-            }}
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={onSave}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#003366',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              width: '120px',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#004488';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#003366';
-            }}
-          >
-            Salvar
-          </button>
+          {viewOnly ? (
+            // Modo visualização: apenas botão OK
+            <button
+              onClick={onClose}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#003366',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                width: '120px',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#004488';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#003366';
+              }}
+            >
+              OK
+            </button>
+          ) : (
+            // Modo edição: botões Cancelar e Salvar
+            <>
+              <button
+                onClick={onClose}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#888',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  width: '120px',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#666';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#888';
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={onSave}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#003366',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  width: '120px',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#004488';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#003366';
+                }}
+              >
+                Salvar
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>,

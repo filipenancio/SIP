@@ -1,21 +1,19 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import MessageModal from './MessageModal';
 import { EditModalBus, type Bus } from './EditModalBus';
 import { EditModalGenerator, type Generator } from './EditModalGenerator';
 import { EditModalBranch, type Branch } from './EditModalBranch';
 import { EditModalBaseValues } from './EditModalBaseValues';
+import { ViewPortBaseSVG, DefaultLegend, BaseValuesDisplay, ResultTotals } from './ViewPortBaseSVG';
+import { Diagram3Bus, LineResult } from './Diagram3Bus';
+import { MPC, MPCResult, simulateSystem } from '../utils/SimulateUtils';
+import { TooltipBus } from './TooltipBus';
+import { TooltipGenerator } from './TooltipGenerator';
+import { TooltipBranch } from './TooltipBranch';
+import { TooltipLoad } from './TooltipLoad';
 
 // Tipos baseados no formato MATPOWER
 // Bus, Generator e Branch são importados dos componentes
-
-interface MPC {
-  version: string;
-  baseMVA: number;
-  bus: Bus[];
-  gen: Generator[];
-  branch: Branch[];
-}
 
 // Dados originais do case3p.m (sistema imutável para backup)
 const sistemaOriginal: MPC = {
@@ -41,6 +39,38 @@ const sistemaOriginal: MPC = {
 // Função auxiliar para criar deep copy do sistema original
 const createDeepCopy = (obj: MPC): MPC => {
   return JSON.parse(JSON.stringify(obj));
+};
+
+// Função para determinar o tipo correto da barra baseado no gerador
+const determineBusType = (bus: Bus, generator: Generator | undefined): number => {
+  // Barra slack (tipo 3) nunca muda
+  if (bus.type === 3) return 3;
+  
+  // Se não tem gerador, é PQ
+  if (!generator) return 1;
+  
+  // Se tem gerador mas P e Q são zero, é PQ
+  if (generator.Pg === 0 && generator.Qg === 0) return 1;
+  
+  // Se tem gerador com P ou Q diferente de zero, é PV
+  return 2;
+};
+
+// Função para corrigir tipos de barra no sistema inicial
+const fixInitialBusTypes = (mpc: MPC): MPC => {
+  const correctedMpc = createDeepCopy(mpc);
+  
+  correctedMpc.bus.forEach((bus) => {
+    const generator = correctedMpc.gen.find(g => g.bus === bus.bus_i && g.status === 1);
+    const correctType = determineBusType(bus, generator);
+    
+    if (bus.type !== correctType && bus.type !== 3) {
+      console.log(`Corrigindo tipo da barra ${bus.bus_i}: ${bus.type} → ${correctType}`);
+      bus.type = correctType;
+    }
+  });
+  
+  return correctedMpc;
 };
 
 // Componente para Tooltip
@@ -277,7 +307,17 @@ export const TransmissionLineNeutral: React.FC<{
 };
 
 // Componente para o Diagrama do Sistema de 3 Barras
-export const ThreeBusSystemDiagram: React.FC = () => {
+interface ThreeBusSystemDiagramProps {
+  onSimulationStatusChange?: (status: 'idle' | 'simulating' | 'result') => void;
+  onSimulate?: () => Promise<void>;
+  externalControls?: boolean; // Se true, não renderiza botões internos
+}
+
+export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({ 
+  onSimulationStatusChange,
+  onSimulate: externalOnSimulate,
+  externalControls = false
+}) => {
   // Posições das barras no diagrama
   const busPositions = {
     1: { x: 250, y: 250 },
@@ -289,8 +329,8 @@ export const ThreeBusSystemDiagram: React.FC = () => {
   const calculateInitialView = () => {
     const positions = Object.values(busPositions);
     
-    // Calcular limites do diagrama com margem menor para elementos externos
-    const margin = 80; // Margem reduzida
+    // Calcular limites do diagrama com margem para elementos externos (gerador, carga)
+    const margin = 60; // Margem para incluir indicadores de gerador e carga
     const minX = Math.min(...positions.map(p => p.x)) - margin;
     const maxX = Math.max(...positions.map(p => p.x)) + margin;
     const minY = Math.min(...positions.map(p => p.y)) - margin;
@@ -302,28 +342,18 @@ export const ThreeBusSystemDiagram: React.FC = () => {
     const diagramCenterX = (minX + maxX) / 2;
     const diagramCenterY = (minY + maxY) / 2;
     
-    // Dimensões do viewBox (1200x800)
-    const viewBoxWidth = 1200;
-    const viewBoxHeight = 800;
-    const viewBoxCenterX = viewBoxWidth / 2;
-    const viewBoxCenterY = viewBoxHeight / 2;
+    // Dimensões do container visível
+    const containerWidth = 1200;
+    const containerHeight = 480;
     
-    // Calcular zoom mais conservador (usar 60% da tela)
-    const zoomX = (viewBoxWidth * 0.6) / diagramWidth;
-    const zoomY = (viewBoxHeight * 0.6) / diagramHeight;
-    const optimalZoom = Math.min(zoomX, zoomY, 1.2); // Limitar zoom a 1.2
+    // Calcular zoom para usar 70% da área disponível
+    const zoomX = (containerWidth * 0.7) / diagramWidth;
+    const zoomY = (containerHeight * 0.7) / diagramHeight;
+    const optimalZoom = Math.min(zoomX, zoomY);
     
-    // Dimensões DIV disponibilizada para diagrama
-    const divWidth = 1200;
-    const divHeight = 480;
-
-    // Correção para centralização do diagrama na DIV
-    const ajustWidth = (viewBoxWidth - divWidth)/2;
-    const ajustHeight = (viewBoxHeight - divHeight)/2;
-
-    // Calcular pan para centralizar perfeitamente no viewBox
-    const panX = viewBoxCenterX - (diagramCenterX * optimalZoom) - ajustWidth;
-    const panY = viewBoxCenterY - (diagramCenterY * optimalZoom) - ajustHeight; // Ajuste para subir o diagrama
+    // Calcular pan para centralizar o diagrama no container
+    const panX = (containerWidth / 2) - (diagramCenterX * optimalZoom);
+    const panY = (containerHeight / 2) - (diagramCenterY * optimalZoom);
     
     return { 
       pan: { x: panX, y: panY }, 
@@ -350,7 +380,8 @@ export const ThreeBusSystemDiagram: React.FC = () => {
   const [confirmModal, setConfirmModal] = useState({ show: false });
   const [confirmBaseRestoreModal, setConfirmBaseRestoreModal] = useState({ show: false });
   const [generatorEditConfirmModal, setGeneratorEditConfirmModal] = useState({ show: false, generator: null as Generator | null });
-  const [sistemaState, setSistemaState] = useState(() => createDeepCopy(sistemaOriginal));
+  const [busTypeChangeModal, setbusTypeChangeModal] = useState({ show: false, message: '', busId: 0, newType: 1, onConfirm: () => {} });
+  const [sistemaState, setSistemaState] = useState(() => fixInitialBusTypes(createDeepCopy(sistemaOriginal)));
   const [baseModal, setBaseModal] = useState({
     show: false,
     baseMVA: sistemaOriginal.baseMVA,
@@ -358,7 +389,18 @@ export const ThreeBusSystemDiagram: React.FC = () => {
     originalBaseMVA: sistemaOriginal.baseMVA,
     originalBaseKV: sistemaOriginal.bus[0]?.baseKV || 230
   });
+  
+  // Estados para simulação
+  const [simulationStatus, setSimulationStatus] = useState<'idle' | 'simulating' | 'result'>('idle');
+  const [simulationResult, setSimulationResult] = useState<MPCResult | null>(null);
+  const [simulationError, setSimulationError] = useState<string | null>(null);
+  
   const svgRef = useRef<SVGSVGElement>(null);
+
+  // Notificar mudanças de status
+  React.useEffect(() => {
+    onSimulationStatusChange?.(simulationStatus);
+  }, [simulationStatus, onSimulationStatusChange]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     setIsDragging(true);
@@ -473,6 +515,73 @@ export const ThreeBusSystemDiagram: React.FC = () => {
     setZoom(view.zoom);
   };
 
+  // Função para executar a simulação
+  const handleSimulate = useCallback(async () => {
+    console.log('handleSimulate chamado', { externalOnSimulate, externalControls });
+    
+    if (externalOnSimulate) {
+      await externalOnSimulate();
+      return;
+    }
+    
+    try {
+      console.log('Iniciando simulação...');
+      setSimulationStatus('simulating');
+      setSimulationError(null);
+      
+      const mpc: MPC = {
+        version: sistemaState.version,
+        baseMVA: sistemaState.baseMVA,
+        bus: sistemaState.bus,
+        gen: sistemaState.gen,
+        branch: sistemaState.branch
+      };
+      
+      console.log('MPC preparado:', mpc);
+      console.log('Geradores:', mpc.gen.map(g => ({ bus: g.bus, Pg: g.Pg, Qg: g.Qg, status: g.status })));
+      const result = await simulateSystem(mpc);
+      console.log('Resultado da simulação:', result);
+      setSimulationResult(result);
+      setSimulationStatus('result');
+    } catch (error) {
+      console.error('Erro na simulação:', error);
+      setSimulationError(error instanceof Error ? error.message : 'Erro desconhecido');
+      setSimulationStatus('idle');
+    }
+  }, [externalOnSimulate, sistemaState]);
+
+  // Escutar evento de simulação externa
+  React.useEffect(() => {
+    if (!externalControls) return;
+    
+    const handleTrigger = (e: Event) => {
+      console.log('Evento triggerSimulation recebido', e);
+      handleSimulate();
+    };
+    
+    window.addEventListener('triggerSimulation', handleTrigger as EventListener);
+    return () => window.removeEventListener('triggerSimulation', handleTrigger as EventListener);
+  }, [externalControls, handleSimulate]);
+
+  // Escutar evento para voltar ao modo de edição
+  React.useEffect(() => {
+    if (!externalControls) return;
+    
+    const handleBack = (e: Event) => {
+      console.log('Evento backToEdit recebido', e);
+      handleBackToEdit();
+    };
+    
+    window.addEventListener('backToEdit', handleBack as EventListener);
+    return () => window.removeEventListener('backToEdit', handleBack as EventListener);
+  }, [externalControls]);
+
+  // Função para voltar ao diagrama inicial
+  const handleBackToEdit = () => {
+    setSimulationStatus('idle');
+    setSimulationResult(null);
+  };
+
   // Funções para o modal de edição
   const openEditModal = (type: 'bus' | 'generator' | 'branch', data: any) => {
     setTooltip({ show: false, x: 0, y: 0, content: null });
@@ -493,6 +602,8 @@ export const ThreeBusSystemDiagram: React.FC = () => {
 
     const newSistema = { ...sistemaState };
     let newGeneratorAdded: Generator | null = null;
+    let needsBusTypeChange = false;
+    let busTypeChangeInfo = { busId: 0, oldType: 1, newType: 1, message: '' };
     
     if (editModal.type === 'bus') {
       const busIndex = newSistema.bus.findIndex((b: Bus) => b.bus_i === editModal.data.bus_i);
@@ -516,7 +627,7 @@ export const ThreeBusSystemDiagram: React.FC = () => {
                 // Restaurar gerador original
                 newGenerator = { ...originalGeneratorFromSystem };
               } else {
-                // Criar novo gerador com valores padrão
+                // Criar novo gerador com valores padrão (P=0, Q=0)
                 newGenerator = {
                   bus: updatedBus.bus_i,
                   Pg: 0,
@@ -524,7 +635,7 @@ export const ThreeBusSystemDiagram: React.FC = () => {
                   Qmax: 100,
                   Qmin: -100,
                   Vg: 1.0,
-                  mBase: 100,
+                  mBase: sistemaState.baseMVA,
                   status: 1,
                   Pmax: 100,
                   Pmin: 0
@@ -533,13 +644,25 @@ export const ThreeBusSystemDiagram: React.FC = () => {
               
               newSistema.gen.push(newGenerator);
               newGeneratorAdded = newGenerator;
+              // Não verifica P/Q aqui - o aviso só deve aparecer quando o gerador for editado/salvo
             }
           } else {
-            // Gerador foi desativado - remover da lista (apenas se não for barra slack)
+            // Gerador foi desativado/removido - remover da lista e transformar em PQ
             if (updatedBus.type !== 3) {
               const genIndex = newSistema.gen.findIndex((g: Generator) => g.bus === updatedBus.bus_i);
               if (genIndex !== -1) {
                 newSistema.gen.splice(genIndex, 1);
+              }
+              // Transformar barra em PQ
+              if (updatedBus.type !== 1) {
+                updatedBus.type = 1;
+                needsBusTypeChange = true;
+                busTypeChangeInfo = {
+                  busId: updatedBus.bus_i,
+                  oldType: originalBus.type,
+                  newType: 1,
+                  message: `O gerador foi removido da Barra ${updatedBus.bus_i}. A barra será transformada em PQ.`
+                };
               }
             }
           }
@@ -550,7 +673,56 @@ export const ThreeBusSystemDiagram: React.FC = () => {
     } else if (editModal.type === 'generator') {
       const genIndex = newSistema.gen.findIndex((g: Generator) => g.bus === editModal.data.bus);
       if (genIndex !== -1) {
-        newSistema.gen[genIndex] = editModal.data;
+        const oldGenerator = newSistema.gen[genIndex];
+        const newGenerator = editModal.data;
+        const busIndex = newSistema.bus.findIndex((b: Bus) => b.bus_i === newGenerator.bus);
+        
+        if (busIndex !== -1 && newSistema.bus[busIndex].type !== 3) {
+          const hadPower = oldGenerator.Pg !== 0 || oldGenerator.Qg !== 0;
+          const hasPower = newGenerator.Pg !== 0 || newGenerator.Qg !== 0;
+          
+          // Caso 1: Gerador estava com P=0 e Q=0, mas agora tem potência
+          if (!hadPower && hasPower) {
+            needsBusTypeChange = true;
+            busTypeChangeInfo = {
+              busId: newGenerator.bus,
+              oldType: newSistema.bus[busIndex].type,
+              newType: 2,
+              message: `O gerador da Barra ${newGenerator.bus} agora possui geração. A barra será transformada em PV.`
+            };
+            newSistema.bus[busIndex].type = 2;
+          }
+          // Caso 2: Gerador tinha potência, mas agora P=0 e Q=0
+          else if (hadPower && !hasPower) {
+            needsBusTypeChange = true;
+            const willChange = newSistema.bus[busIndex].type !== 1;
+            busTypeChangeInfo = {
+              busId: newGenerator.bus,
+              oldType: newSistema.bus[busIndex].type,
+              newType: 1,
+              message: willChange
+                ? `O gerador da Barra ${newGenerator.bus} foi definido com P = 0 e Q = 0. O gerador será desconsiderado e a barra será transformada em PQ.`
+                : `O gerador da Barra ${newGenerator.bus} possui P = 0 e Q = 0. O gerador será desconsiderado (barra já é do tipo PQ).`
+            };
+            newSistema.bus[busIndex].type = 1;
+          }
+          // Caso 3: Gerador continua com P=0 e Q=0 (primeira edição após criação ou edição sem mudança)
+          else if (!hadPower && !hasPower) {
+            needsBusTypeChange = true;
+            const willChange = newSistema.bus[busIndex].type !== 1;
+            busTypeChangeInfo = {
+              busId: newGenerator.bus,
+              oldType: newSistema.bus[busIndex].type,
+              newType: 1,
+              message: willChange
+                ? `O gerador da Barra ${newGenerator.bus} possui P = 0 e Q = 0. O gerador será desconsiderado e a barra será transformada em PQ.`
+                : `O gerador da Barra ${newGenerator.bus} possui P = 0 e Q = 0. O gerador será desconsiderado (barra já é do tipo PQ).`
+            };
+            newSistema.bus[busIndex].type = 1;
+          }
+        }
+        
+        newSistema.gen[genIndex] = newGenerator;
       }
     } else if (editModal.type === 'branch') {
       const branchIndex = newSistema.branch.findIndex((b: Branch) => 
@@ -561,8 +733,20 @@ export const ThreeBusSystemDiagram: React.FC = () => {
       }
     }
 
+    // Salvar o sistema
     setSistemaState(newSistema);
     closeEditModal();
+    
+    // Mostrar modal de aviso se houver mudança de tipo de barra
+    if (needsBusTypeChange) {
+      setbusTypeChangeModal({
+        show: true,
+        message: busTypeChangeInfo.message,
+        busId: busTypeChangeInfo.busId,
+        newType: busTypeChangeInfo.newType,
+        onConfirm: () => setbusTypeChangeModal({ show: false, message: '', busId: 0, newType: 1, onConfirm: () => {} })
+      });
+    }
     
     // Se um novo gerador foi adicionado, perguntar se quer editar
     if (newGeneratorAdded) {
@@ -772,286 +956,252 @@ export const ThreeBusSystemDiagram: React.FC = () => {
   };
 
   // Função para criar tooltip de barra
-  const createBusTooltip = (bus: Bus) => (
-    <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
-      <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '14px' }}>Barra {bus.bus_i}</div>
-      <div>Tipo: {bus.type === 3 ? 'Slack' : bus.type === 2 ? 'PV' : 'PQ'}</div>
-      <div>Base kV: {bus.baseKV} kV</div>
-      <div>Pd: {bus.Pd.toFixed(1)} MW</div>
-      <div>Qd: {bus.Qd.toFixed(1)} MVAr</div>
-      <div>V: {bus.Vm.toFixed(3)} pu</div>
-      <div>θ: {bus.Va.toFixed(2)}°</div>
-      <div>Vmax: {bus.Vmax.toFixed(2)} pu</div>
-      <div>Vmin: {bus.Vmin.toFixed(2)} pu</div>
-    </div>
-  );
+  const createBusTooltip = (bus: Bus) => {
+    const busResult = simulationResult?.bus.find(b => b.bus_id === bus.bus_i);
+    return (
+      <TooltipBus 
+        bus={bus} 
+        busResult={busResult} 
+        isResultView={simulationStatus === 'result'} 
+      />
+    );
+  };
 
   // Função para criar tooltip de gerador
-  const createGeneratorTooltip = (gen: Generator) => (
-    <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
-      <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '14px' }}>Gerador - Barra {gen.bus}</div>
-      <div>Pg: {gen.Pg.toFixed(1)} MW</div>
-      <div>Qg: {gen.Qg.toFixed(1)} MVAr</div>
-      <div>Pmax: {gen.Pmax.toFixed(1)} MW</div>
-      <div>Pmin: {gen.Pmin.toFixed(1)} MW</div>
-      <div>Qmax: {gen.Qmax.toFixed(1)} MVAr</div>
-      <div>Qmin: {gen.Qmin.toFixed(1)} MVAr</div>
-      <div>Status: {gen.status === 1 ? 'Ativo' : 'Inativo'}</div>
-    </div>
-  );
+  const createGeneratorTooltip = (gen: Generator) => {
+    const genResult = simulationResult?.generators.find(g => g.bus_id === gen.bus);
+    const extGridResult = simulationResult?.ext_grid.find(eg => eg.bus_id === gen.bus);
+    return (
+      <TooltipGenerator 
+        generator={gen} 
+        generatorResult={genResult}
+        extGridResult={extGridResult}
+        isResultView={simulationStatus === 'result'} 
+      />
+    );
+  };
 
   // Função para criar tooltip de linha
-  const createBranchTooltip = (branch: Branch) => (
-    <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
-      <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '14px' }}>Linha {branch.fbus} → {branch.tbus}</div>
-      <div>Base MVA: {branch.baseMVA || 100} MVA</div>
-      <div>R: {branch.r.toFixed(4)} pu</div>
-      <div>X: {branch.x.toFixed(4)} pu</div>
-      <div>B: {branch.b.toFixed(4)} pu</div>
-      <div>Rate A: {branch.rateA.toFixed(0)} MVA</div>
-      <div>Rate B: {branch.rateB.toFixed(0)} MVA</div>
-      <div>Rate C: {branch.rateC.toFixed(0)} MVA</div>
-      <div>Tap: {branch.angle.toFixed(2)}°</div>
-    </div>
-  );
+  const createBranchTooltip = (branch: Branch) => {
+    const lineResult = simulationResult?.lines.find(l => 
+      (l.from === branch.fbus && l.to === branch.tbus) ||
+      (l.from === branch.tbus && l.to === branch.fbus)
+    );
+    return (
+      <TooltipBranch 
+        branch={branch} 
+        lineResult={lineResult} 
+        isResultView={simulationStatus === 'result'} 
+      />
+    );
+  };
+
+  // Função para criar tooltip de carga
+  const createLoadTooltip = (bus: Bus) => {
+    const loadResult = simulationResult?.loads.find(l => l.bus_id === bus.bus_i);
+    return (
+      <TooltipLoad 
+        bus={bus} 
+        loadResult={loadResult} 
+        isResultView={simulationStatus === 'result'} 
+      />
+    );
+  };
 
   return (
     <div style={{ 
       width: '100%', 
-      height: '100%', 
-      maxHeight: '480px',
+      height: '480px',
       position: 'relative',
       overflow: 'hidden',
       border: '1px solid #ddd',
+      borderRadius: '4px',
+      backgroundColor: '#ffffff',
       cursor: isDragging ? 'grabbing' : 'grab'
     }}>
       {/* Tooltip */}
       <Tooltip {...tooltip} />
-
-      {/* Controles de Zoom */}
-      <div style={{
-        position: 'absolute',
-        top: '15px',
-        right: '15px',
-        zIndex: 20,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '5px'
-      }}>
-        <button onClick={zoomIn} style={{
-          width: '30px', height: '30px', backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', fontSize: '16px',
-          fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>+</button>
-        <button onClick={zoomOut} style={{
-          width: '30px', height: '30px', backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', fontSize: '16px',
-          fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>−</button>
-        <button onClick={resetView} style={{
-          width: '30px', height: '30px', backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', fontSize: '10px',
-          fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>⌂</button>
-      </div>
-
-      {/* Legenda fixa */}
-      <div style={{
-        position: 'absolute', top: '15px', left: '15px', zIndex: 10,
-        backgroundColor: 'rgba(245, 245, 245, 0.95)', border: '1px solid #ccc',
-        borderRadius: '4px', padding: '12px', width: '170px', fontSize: '9px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-      }}>
-        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '11px', marginBottom: '10px', color: '#333' }}>Legenda</div>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-          <svg width="22" height="18" style={{ marginRight: '10px' }}>
-            <circle cx="11" cy="9" r="8" fill="#4169E1" stroke="#000" strokeWidth="1" />
-            <circle cx="11" cy="9" r="4" fill="#000" />
-          </svg>
-          <span style={{ color: '#333' }}>Barra de Referência</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-          <svg width="22" height="18" style={{ marginRight: '10px' }}>
-            <circle cx="11" cy="9" r="8" fill="#4169E1" stroke="#000" strokeWidth="1" />
-          </svg>
-          <span style={{ color: '#333' }}>Barra</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-          <svg width="22" height="18" style={{ marginRight: '10px' }}>
-            <rect x="4" y="3" width="15" height="13" fill="#32CD32" stroke="#000" strokeWidth="1" rx="2" />
-            <polygon points="7,12 11,5 15,12" fill="#FFD700" stroke="#000" strokeWidth="0.5" />
-          </svg>
-          <span style={{ color: '#333' }}>Barra geradora</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-          <svg width="22" height="18" style={{ marginRight: '10px' }}>
-            <rect x="4" y="3" width="15" height="13" fill="#FFB6C1" stroke="#000" strokeWidth="1" rx="2" />
-            <rect x="6" y="5" width="11" height="7" fill="#8B4513" stroke="#000" strokeWidth="0.5" />
-            <rect x="7" y="6" width="2" height="5" fill="#654321" />
-            <rect x="9.5" y="6" width="2" height="5" fill="#654321" />
-            <rect x="12" y="6" width="2" height="5" fill="#654321" />
-          </svg>
-          <span style={{ color: '#333' }}>Barra com carga</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <svg width="22" height="18" style={{ marginRight: '10px' }}>
-            <rect x="2" y="7" width="19" height="5" fill="#D3D3D3" stroke="#A9A9A9" strokeWidth="1" rx="2" />
-            <line x1="3" y1="9.5" x2="18" y2="9.5" stroke="#000" strokeWidth="1" />
-            <polygon points="16,9.5 14,8 14,11" fill="#000" stroke="#000" strokeWidth="0.5" />
-          </svg>
-          <span style={{ color: '#333' }}>Linha de transmissão</span>
-        </div>
-      </div>
-
-      {/* Informações Base */}
-      <div 
-        onClick={openBaseModal}
-        style={{
-          position: 'absolute', bottom: '15px', left: '15px', zIndex: 10,
-          backgroundColor: 'rgba(245, 245, 245, 0.95)', border: '1px solid #ccc',
-          borderRadius: '4px', padding: '12px', width: '170px', fontSize: '10px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          cursor: 'pointer',
-          transition: 'background-color 0.2s'
-        }}
-        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(230, 230, 230, 0.95)'}
-        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(245, 245, 245, 0.95)'}
+      {/* ViewPort com diagrama */}
+      <ViewPortBaseSVG
+        legend={<DefaultLegend includeResultLines={simulationStatus === 'result'} />}
+        baseValues={<BaseValuesDisplay baseMVA={sistemaState.baseMVA} baseKV={sistemaState.bus[0]?.baseKV || 230} />}
+        onBaseValuesClick={simulationStatus === 'idle' ? openBaseModal : undefined}
+        resultTotals={
+          simulationStatus === 'result' && simulationResult ? (
+            <ResultTotals
+              genCapacityP={simulationResult.genCapacityP}
+              genCapacityQmin={simulationResult.genCapacityQmin}
+              genCapacityQmax={simulationResult.genCapacityQmax}
+              loadSystemP={simulationResult.loadSystemP}
+              loadSystemQ={simulationResult.loadSystemQ}
+              totalPLossMW={simulationResult.lines.reduce((sum, line) => sum + Math.abs(line.p_loss_mw), 0)}
+              totalQLossMVAr={simulationResult.lines.reduce((sum, line) => sum + Math.abs(line.q_loss_mvar), 0)}
+            />
+          ) : undefined
+        }
+        initialZoom={initialView.zoom}
+        initialPan={initialView.pan}
       >
-        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '11px', marginBottom: '10px', color: '#333' }}>Valores Base</div>
-        <div style={{ marginBottom: '6px', color: '#333' }}>
-          <span style={{ fontWeight: 'bold' }}>Base MVA:</span> {sistemaState.baseMVA} MVA
-        </div>
-        <div style={{ color: '#333' }}>
-          <span style={{ fontWeight: 'bold' }}>Base kV:</span> {sistemaState.bus[0]?.baseKV || 230} kV
-        </div>
-      </div>
+        <Diagram3Bus
+          buses={sistemaState.bus}
+          generators={sistemaState.gen}
+          branches={sistemaState.branch}
+          lineResults={simulationResult?.lines}
+          isResultView={simulationStatus === 'result'}
+          onBusClick={(bus) => openEditModal('bus', bus)}
+          onGeneratorClick={(gen) => openEditModal('generator', gen)}
+          onBranchClick={(branch) => openEditModal('branch', branch)}
+          onLoadClick={(bus) => openEditModal('bus', bus)}
+          onBusHover={(e, show, bus) => handleTooltip(e, show, bus ? createBusTooltip(bus) : undefined)}
+          onGeneratorHover={(e, show, gen) => handleTooltip(e, show, gen ? createGeneratorTooltip(gen) : undefined)}
+          onBranchHover={(e, show, branch) => handleTooltip(e, show, branch ? createBranchTooltip(branch) : undefined)}
+          onLoadHover={(e, show, bus) => handleTooltip(e, show, bus ? (simulationStatus === 'result' ? createLoadTooltip(bus) : createBusTooltip(bus)) : undefined)}
+          hasDragged={hasDragged}
+        />
+      </ViewPortBaseSVG>
 
-      {/* Diagrama */}
-      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <svg 
-          ref={svgRef}
-          width="100%" 
-          height="100%" 
-          viewBox="0 0 1200 800" 
-          style={{ 
-            transition: isDragging ? 'none' : 'transform 0.1s ease-out'
-          }}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-          onWheel={handleWheel}
-        >
-          <rect width="1200" height="800" fill="#ffffff" stroke="#ffffff" strokeWidth="1" />
-          
-          {/* Grupo com transformação para pan e zoom */}
-          <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-          {/* Linhas de transmissão */}
-          {sistemaState.branch.map((branch: Branch, index: number) => {
-            const pos1 = busPositions[branch.fbus as keyof typeof busPositions];
-            const pos2 = busPositions[branch.tbus as keyof typeof busPositions];
-            return (
-              <TransmissionLineNeutral
-                key={index}
-                x1={pos1.x}
-                y1={pos1.y}
-                x2={pos2.x}
-                y2={pos2.y}
-                label={`L${branch.fbus}-${branch.tbus}`}
-                branch={branch}
-                onHover={(e, show) => handleTooltip(e, show, show ? createBranchTooltip(branch) : undefined)}
-                onClick={() => {
-                  if (!hasDragged) openEditModal('branch', branch);
-                }}
-              />
-            );
-          })}
-          
-          {/* Barras */}
-          {sistemaState.bus.map((bus: Bus) => {
-            const pos = busPositions[bus.bus_i as keyof typeof busPositions];
-            const BusComponent = bus.type === 3 ? ReferenceBus : NormalBus;
-            return (
-              <BusComponent
-                key={bus.bus_i}
-                x={pos.x}
-                y={pos.y}
-                label={`Barra ${bus.bus_i}`}
-                bus={bus}
-                onHover={(e, show) => handleTooltip(e, show, show ? createBusTooltip(bus) : undefined)}
-                onClick={() => {
-                  if (!hasDragged) openEditModal('bus', bus);
-                }}
-              />
-            );
-          })}
-          
-          {/* Indicadores de gerador */}
-          {sistemaState.bus.map((bus: Bus) => {
-            const pos = busPositions[bus.bus_i as keyof typeof busPositions];
-            const generator = getGenerator(bus.bus_i);
-            if (!hasGenerator(bus.bus_i) || !generator) return null;
-            return (
-              <GeneratorIndicator
-                key={`gen-${bus.bus_i}`}
-                x={pos.x - 30}
-                y={pos.y - 30}
-                generator={generator}
-                onHover={(e, show) => handleTooltip(e, show, show ? createGeneratorTooltip(generator) : undefined)}
-                onClick={() => {
-                  if (!hasDragged) openEditModal('generator', generator);
-                }}
-              />
-            );
-          })}
-          
-          {/* Indicadores de carga */}
-          {sistemaState.bus.map((bus: Bus) => {
-            const pos = busPositions[bus.bus_i as keyof typeof busPositions];
-            if (!hasLoad(bus.bus_i)) return null;
-            return (
-              <LoadIndicator
-                key={`load-${bus.bus_i}`}
-                x={pos.x + 30}
-                y={pos.y - 30}
-                bus={bus}
-                onHover={(e, show) => handleTooltip(e, show, show ? createBusTooltip(bus) : undefined)}
-                onClick={() => {
-                  if (!hasDragged) openEditModal('bus', bus);
-                }}
-              />
-            );
-          })}
-          </g>
-        </svg>
-      </div>
+      {/* Botão Simular - aparece quando está no modo edição e não está usando controles externos */}
+      {!externalControls && simulationStatus === 'idle' && (
+        <div style={{
+          position: 'absolute',
+          bottom: '20px',
+          right: '20px',
+          zIndex: 20
+        }}>
+          <button
+            onClick={handleSimulate}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: '#28a745',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#218838';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#28a745';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            SIMULAR
+          </button>
+        </div>
+      )}
+
+      {/* Indicador de simulação em andamento - não mostra se usando controles externos */}
+      {!externalControls && simulationStatus === 'simulating' && (
+        <div style={{
+          position: 'absolute',
+          bottom: '20px',
+          right: '20px',
+          zIndex: 20,
+          padding: '12px 24px',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          borderRadius: '4px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px'
+        }}>
+          <div style={{
+            width: '20px',
+            height: '20px',
+            border: '3px solid #f3f3f3',
+            borderTop: '3px solid #003366',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }}/>
+          <span style={{ fontWeight: 'bold', color: '#003366' }}>SIMULANDO...</span>
+          <style>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      )}
+
+      {/* Botões de Ação do Resultado - não mostra se usando controles externos */}
+      {!externalControls && simulationStatus === 'result' && (
+        <div style={{
+          position: 'absolute',
+          bottom: '20px',
+          right: '20px',
+          zIndex: 20,
+          display: 'flex',
+          gap: '10px'
+        }}>
+          <button
+            onClick={handleBackToEdit}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#003366',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#004488';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#003366';
+            }}
+          >
+            VOLTAR PARA EDIÇÃO
+          </button>
+        </div>
+      )}
 
       {/* Modais de Edição */}
       <EditModalBus
         show={editModal.show && editModal.type === 'bus'}
         data={editModal.data}
+        busResult={simulationResult?.bus.find(b => b.bus_id === editModal.data?.bus_i)}
         onClose={closeEditModal}
         onSave={saveEditModal}
         onRestore={restoreOriginalData}
         onChange={(newData) => setEditModal(prev => ({ ...prev, data: newData }))}
+        viewOnly={simulationStatus === 'result'}
       />
 
       <EditModalGenerator
         show={editModal.show && editModal.type === 'generator'}
         data={editModal.data}
+        generatorResult={simulationResult?.generators.find(g => g.bus_id === editModal.data?.bus)}
+        extGridResult={simulationResult?.ext_grid.find(eg => eg.bus_id === editModal.data?.bus)}
         onClose={closeEditModal}
         onSave={saveEditModal}
         onRestore={restoreOriginalData}
         onChange={(newData) => setEditModal(prev => ({ ...prev, data: newData }))}
+        viewOnly={simulationStatus === 'result'}
       />
 
       <EditModalBranch
         show={editModal.show && editModal.type === 'branch'}
         data={editModal.data}
+        lineResult={
+          simulationResult?.lines.find(l => 
+            (l.from === editModal.data?.fbus && l.to === editModal.data?.tbus) ||
+            (l.from === editModal.data?.tbus && l.to === editModal.data?.fbus)
+          )
+        }
         onClose={closeEditModal}
         onSave={saveEditModal}
         onRestore={restoreOriginalData}
         onChange={(newData) => setEditModal(prev => ({ ...prev, data: newData }))}
+        viewOnly={simulationStatus === 'result'}
       />
 
       {/* Modal de Edição de Bases */}
@@ -1125,6 +1275,23 @@ export const ThreeBusSystemDiagram: React.FC = () => {
           {
             label: 'Sim',
             onClick: confirmEditGenerator,
+            variant: 'primary'
+          }
+        ]}
+      />
+
+      <MessageModal
+        show={busTypeChangeModal.show}
+        title="Mudança de Tipo de Barra"
+        message={
+          <>
+            {busTypeChangeModal.message}
+          </>
+        }
+        buttons={[
+          {
+            label: 'OK',
+            onClick: () => busTypeChangeModal.onConfirm(),
             variant: 'primary'
           }
         ]}

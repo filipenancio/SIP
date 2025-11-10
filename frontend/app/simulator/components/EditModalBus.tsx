@@ -1,5 +1,6 @@
 import React from 'react';
 import { EditModalBase } from './EditModalBase';
+import { NumericInput } from './NumericInput';
 
 export interface Bus {
   bus_i: number;
@@ -18,13 +19,23 @@ export interface Bus {
   hasGenerator?: boolean;
 }
 
+interface BusResultData {
+  bus_id: number;
+  vm_pu: number;
+  va_degree: number;
+  p_mw: number;
+  q_mvar: number;
+}
+
 interface EditModalBusProps {
   show: boolean;
   data: Bus | null;
+  busResult?: BusResultData;
   onClose: () => void;
-  onSave: () => void;
-  onRestore: () => void;
-  onChange: (newData: Bus) => void;
+  onSave?: () => void;
+  onRestore?: () => void;
+  onChange?: (newData: Bus) => void;
+  viewOnly?: boolean;
 }
 
 const ToggleSwitch: React.FC<{
@@ -63,42 +74,19 @@ const ToggleSwitch: React.FC<{
   );
 };
 
-const NumericInput: React.FC<{
-  value: number;
-  onChange: (value: number) => void;
-  min?: number;
-  max?: number;
-  step?: number;
-  style?: React.CSSProperties;
-}> = ({ value, onChange, min, max, step = 0.01, style }) => {
-  return (
-    <input
-      type="number"
-      value={value}
-      onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-      min={min}
-      max={max}
-      step={step}
-      style={{
-        padding: '6px 8px',
-        border: '1px solid #ccc',
-        borderRadius: '4px',
-        fontSize: '12px',
-        ...style
-      }}
-    />
-  );
-};
-
 export const EditModalBus: React.FC<EditModalBusProps> = ({
   show,
   data,
+  busResult,
   onClose,
   onSave,
   onRestore,
-  onChange
+  onChange,
+  viewOnly = false
 }) => {
   if (!data) return null;
+
+  const isResultView = viewOnly && busResult;
 
   const busTypeNames: { [key: number]: string } = {
     1: 'PQ (Carga)',
@@ -119,11 +107,12 @@ export const EditModalBus: React.FC<EditModalBusProps> = ({
       </label>
       <NumericInput
         value={data[key] as number}
-        onChange={(value: number) => onChange({ ...data, [key]: value })}
+        onChange={viewOnly ? () => {} : (value: number) => onChange?.({ ...data, [key]: value })}
         min={min}
         max={max}
         step={step || 0.01}
-        style={{ width: '200px' }}
+        disabled={viewOnly}
+        style={{ width: '200px', backgroundColor: viewOnly ? '#f5f5f5' : 'white', cursor: viewOnly ? 'default' : 'text' }}
       />
       <span style={{ 
         marginLeft: '8px', 
@@ -143,6 +132,7 @@ export const EditModalBus: React.FC<EditModalBusProps> = ({
       onClose={onClose}
       onSave={onSave}
       onRestore={onRestore}
+      viewOnly={viewOnly}
     >
       <div>
         {/* Campo do tipo de barra - somente leitura */}
@@ -209,6 +199,136 @@ export const EditModalBus: React.FC<EditModalBusProps> = ({
           </span>
         </div>
 
+        {isResultView ? (
+          // Visualização de Resultado
+          <>
+            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
+              <label style={{ 
+                minWidth: '130px', 
+                marginRight: '10px', 
+                fontWeight: 'bold',
+                fontSize: '12px',
+                color: '#000'
+              }}>
+                V:
+              </label>
+              <span style={{
+                width: '200px',
+                padding: '6px 8px',
+                backgroundColor: '#f5f5f5',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                fontSize: '12px',
+                color: '#666'
+              }}>
+                {busResult.vm_pu.toFixed(3)}
+              </span>
+              <span style={{ 
+                marginLeft: '8px', 
+                fontSize: '12px', 
+                color: '#666',
+                minWidth: '50px'
+              }}>
+                pu
+              </span>
+            </div>
+
+            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
+              <label style={{ 
+                minWidth: '130px', 
+                marginRight: '10px', 
+                fontWeight: 'bold',
+                fontSize: '12px',
+                color: '#000'
+              }}>
+                θ:
+              </label>
+              <span style={{
+                width: '200px',
+                padding: '6px 8px',
+                backgroundColor: '#f5f5f5',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                fontSize: '12px',
+                color: '#666'
+              }}>
+                {busResult.va_degree.toFixed(2)}
+              </span>
+              <span style={{ 
+                marginLeft: '8px', 
+                fontSize: '12px', 
+                color: '#666',
+                minWidth: '50px'
+              }}>
+                °
+              </span>
+            </div>
+
+            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
+              <label style={{ 
+                minWidth: '130px', 
+                marginRight: '10px', 
+                fontWeight: 'bold',
+                fontSize: '12px',
+                color: '#000'
+              }}>
+                P:
+              </label>
+              <span style={{
+                width: '200px',
+                padding: '6px 8px',
+                backgroundColor: '#f5f5f5',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                fontSize: '12px',
+                color: '#666'
+              }}>
+                {busResult.p_mw.toFixed(2)}
+              </span>
+              <span style={{ 
+                marginLeft: '8px', 
+                fontSize: '12px', 
+                color: '#666',
+                minWidth: '50px'
+              }}>
+                MW
+              </span>
+            </div>
+
+            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
+              <label style={{ 
+                minWidth: '130px', 
+                marginRight: '10px', 
+                fontWeight: 'bold',
+                fontSize: '12px',
+                color: '#000'
+              }}>
+                Q:
+              </label>
+              <span style={{
+                width: '200px',
+                padding: '6px 8px',
+                backgroundColor: '#f5f5f5',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                fontSize: '12px',
+                color: '#666'
+              }}>
+                {busResult.q_mvar.toFixed(2)}
+              </span>
+              <span style={{ 
+                marginLeft: '8px', 
+                fontSize: '12px', 
+                color: '#666',
+                minWidth: '50px'
+              }}>
+                MVAr
+              </span>
+            </div>
+          </>
+        ) : (
+          // Visualização de Edição
+          <>
         {/* Campos de demanda */}
         {renderField('Potência Ativa', 'Pd', 'MW', 0)}
         {renderField('Potência Reativa', 'Qd', 'MVAr', 0)}
@@ -233,8 +353,8 @@ export const EditModalBus: React.FC<EditModalBusProps> = ({
           <div style={{ width: '200px', display: 'flex', alignItems: 'center' }}>
             <ToggleSwitch
               checked={data.hasGenerator || false}
-              onChange={(checked: boolean) => onChange({ ...data, hasGenerator: checked })}
-              disabled={data.type === 3} // Barra slack sempre tem gerador
+              onChange={viewOnly ? () => {} : (checked: boolean) => onChange?.({ ...data, hasGenerator: checked })}
+              disabled={viewOnly || data.type === 3} // Barra slack sempre tem gerador
             />
             <span style={{ 
               marginLeft: '8px', 
@@ -254,6 +374,8 @@ export const EditModalBus: React.FC<EditModalBusProps> = ({
             {data.type === 3 ? '(obrig.)' : ''}
           </span>
         </div>
+          </>
+        )}
       </div>
     </EditModalBase>
   );

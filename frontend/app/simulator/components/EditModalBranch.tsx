@@ -1,5 +1,7 @@
 import React from 'react';
 import { EditModalBase } from './EditModalBase';
+import { LineResult } from './Diagram3Bus';
+import { NumericInput } from './NumericInput';
 
 export interface Branch {
   fbus: number;
@@ -21,48 +23,27 @@ export interface Branch {
 interface EditModalBranchProps {
   show: boolean;
   data: Branch | null;
+  lineResult?: LineResult;
   onClose: () => void;
-  onSave: () => void;
-  onRestore: () => void;
-  onChange: (newData: Branch) => void;
+  onSave?: () => void;
+  onRestore?: () => void;
+  onChange?: (newData: Branch) => void;
+  viewOnly?: boolean;
 }
-
-const NumericInput: React.FC<{
-  value: number;
-  onChange: (value: number) => void;
-  min?: number;
-  max?: number;
-  step?: number;
-  style?: React.CSSProperties;
-}> = ({ value, onChange, min, max, step = 0.01, style }) => {
-  return (
-    <input
-      type="number"
-      value={value}
-      onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-      min={min}
-      max={max}
-      step={step}
-      style={{
-        padding: '6px 8px',
-        border: '1px solid #ccc',
-        borderRadius: '4px',
-        fontSize: '12px',
-        ...style
-      }}
-    />
-  );
-};
 
 export const EditModalBranch: React.FC<EditModalBranchProps> = ({
   show,
   data,
+  lineResult,
   onClose,
   onSave,
   onRestore,
-  onChange
+  onChange,
+  viewOnly = false
 }) => {
   if (!data) return null;
+
+  const isResultView = viewOnly && lineResult;
 
   const renderField = (label: string, key: keyof Branch, unit: string, min?: number, max?: number, step?: number) => (
     <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
@@ -77,11 +58,12 @@ export const EditModalBranch: React.FC<EditModalBranchProps> = ({
       </label>
       <NumericInput
         value={data[key] as number}
-        onChange={(value: number) => onChange({ ...data, [key]: value })}
+        onChange={viewOnly ? () => {} : (value: number) => onChange?.({ ...data, [key]: value })}
         min={min}
         max={max}
         step={step || 0.01}
-        style={{ width: '200px' }}
+        disabled={viewOnly}
+        style={{ width: '200px', backgroundColor: viewOnly ? '#f5f5f5' : 'white', cursor: viewOnly ? 'default' : 'text' }}
       />
       <span style={{ 
         marginLeft: '8px', 
@@ -101,8 +83,232 @@ export const EditModalBranch: React.FC<EditModalBranchProps> = ({
       onClose={onClose}
       onSave={onSave}
       onRestore={onRestore}
+      viewOnly={viewOnly}
     >
       <div>
+        {isResultView ? (
+          // Visualização de Resultado
+          <>
+            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
+              <label style={{ 
+                minWidth: '130px', 
+                marginRight: '10px', 
+                fontWeight: 'bold',
+                fontSize: '12px',
+                color: '#000'
+              }}>
+                P (de):
+              </label>
+              <span style={{
+                width: '200px',
+                padding: '6px 8px',
+                backgroundColor: '#f5f5f5',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                fontSize: '12px',
+                color: '#666'
+              }}>
+                {lineResult.p_from_mw.toFixed(2)}
+              </span>
+              <span style={{ 
+                marginLeft: '8px', 
+                fontSize: '12px', 
+                color: '#666',
+                minWidth: '50px'
+              }}>
+                MW
+              </span>
+            </div>
+
+            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
+              <label style={{ 
+                minWidth: '130px', 
+                marginRight: '10px', 
+                fontWeight: 'bold',
+                fontSize: '12px',
+                color: '#000'
+              }}>
+                Q (de):
+              </label>
+              <span style={{
+                width: '200px',
+                padding: '6px 8px',
+                backgroundColor: '#f5f5f5',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                fontSize: '12px',
+                color: '#666'
+              }}>
+                {lineResult.q_from_mvar.toFixed(2)}
+              </span>
+              <span style={{ 
+                marginLeft: '8px', 
+                fontSize: '12px', 
+                color: '#666',
+                minWidth: '50px'
+              }}>
+                MVAr
+              </span>
+            </div>
+
+            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
+              <label style={{ 
+                minWidth: '130px', 
+                marginRight: '10px', 
+                fontWeight: 'bold',
+                fontSize: '12px',
+                color: '#000'
+              }}>
+                P (para):
+              </label>
+              <span style={{
+                width: '200px',
+                padding: '6px 8px',
+                backgroundColor: '#f5f5f5',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                fontSize: '12px',
+                color: '#666'
+              }}>
+                {lineResult.p_to_mw.toFixed(2)}
+              </span>
+              <span style={{ 
+                marginLeft: '8px', 
+                fontSize: '12px', 
+                color: '#666',
+                minWidth: '50px'
+              }}>
+                MW
+              </span>
+            </div>
+
+            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
+              <label style={{ 
+                minWidth: '130px', 
+                marginRight: '10px', 
+                fontWeight: 'bold',
+                fontSize: '12px',
+                color: '#000'
+              }}>
+                Q (para):
+              </label>
+              <span style={{
+                width: '200px',
+                padding: '6px 8px',
+                backgroundColor: '#f5f5f5',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                fontSize: '12px',
+                color: '#666'
+              }}>
+                {lineResult.q_to_mvar.toFixed(2)}
+              </span>
+              <span style={{ 
+                marginLeft: '8px', 
+                fontSize: '12px', 
+                color: '#666',
+                minWidth: '50px'
+              }}>
+                MVAr
+              </span>
+            </div>
+
+            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
+              <label style={{ 
+                minWidth: '130px', 
+                marginRight: '10px', 
+                fontWeight: 'bold',
+                fontSize: '12px',
+                color: '#000'
+              }}>
+                Perda P:
+              </label>
+              <span style={{
+                width: '200px',
+                padding: '6px 8px',
+                backgroundColor: '#f5f5f5',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                fontSize: '12px',
+                color: '#666'
+              }}>
+                {lineResult.p_loss_mw.toFixed(2)}
+              </span>
+              <span style={{ 
+                marginLeft: '8px', 
+                fontSize: '12px', 
+                color: '#666',
+                minWidth: '50px'
+              }}>
+                MW
+              </span>
+            </div>
+
+            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
+              <label style={{ 
+                minWidth: '130px', 
+                marginRight: '10px', 
+                fontWeight: 'bold',
+                fontSize: '12px',
+                color: '#000'
+              }}>
+                Perda Q:
+              </label>
+              <span style={{
+                width: '200px',
+                padding: '6px 8px',
+                backgroundColor: '#f5f5f5',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                fontSize: '12px',
+                color: '#666'
+              }}>
+                {lineResult.q_loss_mvar.toFixed(2)}
+              </span>
+              <span style={{ 
+                marginLeft: '8px', 
+                fontSize: '12px', 
+                color: '#666',
+                minWidth: '50px'
+              }}>
+                MVAr
+              </span>
+            </div>
+
+            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
+              <label style={{ 
+                minWidth: '130px', 
+                marginRight: '10px', 
+                fontWeight: 'bold',
+                fontSize: '12px',
+                color: '#000'
+              }}>
+                % de uso:
+              </label>
+              <span style={{
+                width: '200px',
+                padding: '6px 8px',
+                backgroundColor: '#f5f5f5',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                fontSize: '12px',
+                color: '#666'
+              }}>
+                {lineResult.loading_percent.toFixed(1)}
+              </span>
+              <span style={{ 
+                marginLeft: '8px', 
+                fontSize: '12px', 
+                color: '#666',
+                minWidth: '50px'
+              }}>
+                %
+              </span>
+            </div>
+          </>
+        ) : (
+          // Visualização de Edição
+          <>
         {/* Campo baseMVA - somente leitura */}
         <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
           <label style={{ 
@@ -142,6 +348,8 @@ export const EditModalBranch: React.FC<EditModalBranchProps> = ({
         {renderField('Capacidade B', 'rateB', 'MVA')}
         {renderField('Capacidade C', 'rateC', 'MVA')}
         {renderField('Tap', 'angle', '°', -360, 360, 0.1)}
+          </>
+        )}
       </div>
     </EditModalBase>
   );

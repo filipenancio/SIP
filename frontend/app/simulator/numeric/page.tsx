@@ -9,6 +9,98 @@ import { formatResults } from "../utils/FormattedOutput";
 import { formatInput } from "../utils/FormattedInput";
 import { useState, useRef } from "react";
 
+// Componente da view de entrada
+const InputView = ({ 
+  inputValue, 
+  setInputValue, 
+  handleBackToMain, 
+  handleSubmit, 
+  isLoading 
+}: {
+  inputValue: string;
+  setInputValue: (value: string) => void;
+  handleBackToMain: () => void;
+  handleSubmit: () => void;
+  isLoading: boolean;
+}) => (
+  <div className={styles.contentContainer}>
+    <div className={styles.singleSection}>
+      <div className={styles.section}>
+        <h2 className={styles.sectionTitle}>Entrada</h2>
+        <textarea
+          className={styles.textArea}
+          placeholder={`Digite o modelo no formato MATPOWER...
+
+function mpc = caseXXX
+    mpc.version = '2';
+    mpc.baseMVA = 100;
+    mpc.bus = [ ... ];
+    mpc.gen = [ ... ];
+    mpc.branch = [ ... ];
+end`}
+          spellCheck={false}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+        />
+      </div>
+      <div className={styles.actions}>
+        <button 
+          className={styles.backButton} 
+          onClick={handleBackToMain}
+        >
+          VOLTAR
+        </button>
+        <button
+          className={styles.simulateButton}
+          onClick={handleSubmit}
+          disabled={isLoading}
+        >
+          {isLoading ? "SIMULANDO..." : "SIMULAR"}
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+// Componente da view de saída
+const OutputView = ({ 
+  output, 
+  handleBackToInput, 
+  generatePDF 
+}: {
+  output: string;
+  handleBackToInput: () => void;
+  generatePDF: () => void;
+}) => (
+  <div className={styles.contentContainer}>
+    <div className={styles.singleSection}>
+      <div className={styles.section}>
+        <h2 className={styles.sectionTitle}>Saída</h2>
+        <textarea
+          className={styles.outputArea}
+          value={output}
+          readOnly
+          spellCheck={false}
+        />
+      </div>
+      <div className={styles.actions}>
+        <button 
+          className={styles.backButton} 
+          onClick={handleBackToInput}
+        >
+          VOLTAR
+        </button>
+        <button
+          className={styles.exportButton}
+          onClick={generatePDF}
+        >
+          EXPORTAR
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
 export default function NumericModel() {
   const [isLoading, setIsLoading] = useState(false);
   const [output, setOutput] = useState("");
@@ -250,78 +342,6 @@ export default function NumericModel() {
     }
   };
 
-  // Componente da view de entrada
-  const InputView = () => (
-    <div className={styles.contentContainer}>
-      <div className={styles.singleSection}>
-        <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>Entrada</h2>
-          <textarea
-            className={styles.textArea}
-            placeholder={`Digite o modelo no formato MATPOWER...
-
-function mpc = caseXXX
-    mpc.version = '2';
-    mpc.baseMVA = 100;
-    mpc.bus = [ ... ];
-    mpc.gen = [ ... ];
-    mpc.branch = [ ... ];
-end`}
-            spellCheck={false}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-          />
-        </div>
-        <div className={styles.actions}>
-          <button 
-            className={styles.backButton} 
-            onClick={handleBackToMain}
-          >
-            VOLTAR
-          </button>
-          <button
-            className={styles.simulateButton}
-            onClick={handleSubmit}
-            disabled={isLoading}
-          >
-            {isLoading ? "SIMULANDO..." : "SIMULAR"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Componente da view de saída
-  const OutputView = () => (
-    <div className={styles.contentContainer}>
-      <div className={styles.singleSection}>
-        <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>Saída</h2>
-          <textarea
-            className={styles.outputArea}
-            value={output}
-            readOnly
-            spellCheck={false}
-          />
-        </div>
-        <div className={styles.actions}>
-          <button 
-            className={styles.backButton} 
-            onClick={handleBackToInput}
-          >
-            VOLTAR
-          </button>
-          <button
-            className={styles.exportButton}
-            onClick={generatePDF}
-          >
-            EXPORTAR
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div className={`${styles.container} ${styles.numericPage}`}>
       <Image
@@ -336,7 +356,21 @@ end`}
       <HeaderChild title="Modelo Numérico - SISEP" logoSize={60} />
 
       <main className={styles.mainContent}>
-        {currentView === 'input' ? <InputView /> : <OutputView />}
+        {currentView === 'input' ? (
+          <InputView 
+            inputValue={inputValue}
+            setInputValue={setInputValue}
+            handleBackToMain={handleBackToMain}
+            handleSubmit={handleSubmit}
+            isLoading={isLoading}
+          />
+        ) : (
+          <OutputView 
+            output={output}
+            handleBackToInput={handleBackToInput}
+            generatePDF={generatePDF}
+          />
+        )}
       </main>
 
       <Footer />

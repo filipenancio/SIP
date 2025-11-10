@@ -8,23 +8,19 @@ import HeaderChild from "../components/HeaderChild";
 import { ThreeBusSystemDiagram } from "../components/PowerSystemElements";
 
 export default function SystemModel() {
-  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const systemName = searchParams.get('system');
+  const [simulationStatus, setSimulationStatus] = useState<'idle' | 'simulating' | 'result'>('idle');
 
   const getSystemTitle = () => {
     switch (systemName) {
       case 'case3p.m':
         return 'Sistema de 3 Barras';
-      case 'case4gs.m':
+      case 'case4p.m':
         return 'Sistema de 4 Barras';
-      case 'case5':
+      case 'case5p':
         return 'Sistema de 5 Barras';
-      case 'case6ww.m':
-        return 'Sistema de 6 Barras';
-      case 'case9.m':
-        return 'Sistema de 9 Barras';
       case 'case14.m':
         return 'Sistema de 14 Barras';
       default:
@@ -50,7 +46,10 @@ export default function SystemModel() {
           <h2 className={styles.systemTitle}>{getSystemTitle()}</h2>
           <div className={styles.systemDiagram}>
             {systemName === 'case3p.m' ? (
-              <ThreeBusSystemDiagram />
+              <ThreeBusSystemDiagram
+                externalControls={true}
+                onSimulationStatusChange={setSimulationStatus}
+              />
             ) : (
               <div style={{ 
                 display: 'flex', 
@@ -70,22 +69,44 @@ export default function SystemModel() {
       <div className={styles.actions}>
         <button
           className={styles.backButton}
-          onClick={() => router.push('/simulator')}
+          onClick={() => {
+            if (simulationStatus === 'result') {
+              // Se estiver visualizando resultado, volta para modo de edição
+              const event = new CustomEvent('backToEdit');
+              window.dispatchEvent(event);
+              setSimulationStatus('idle');
+            } else {
+              // Se estiver em modo de edição, volta para o menu
+              router.push('/simulator');
+            }
+          }}
         >
           VOLTAR
         </button>
-        <button
-          className={styles.simulateButton}
-          onClick={() => {
-            // TODO: Implementar simulação
-            // setIsLoading(true);
-            // ... chamada da API ...
-            // setIsLoading(false);
-          }}
-          disabled={isLoading}
-        >
-          {isLoading ? "SIMULANDO..." : "SIMULAR"}
-        </button>
+        {simulationStatus === 'result' ? (
+          <button
+            className={styles.exportButton}
+            onClick={() => {
+              // TODO: Implementar exportação
+              console.log('Exportar resultados');
+            }}
+          >
+            EXPORTAR
+          </button>
+        ) : (
+          <button
+            className={styles.simulateButton}
+            onClick={() => {
+              console.log('Botão SIMULAR clicado, disparando evento');
+              const event = new CustomEvent('triggerSimulation');
+              window.dispatchEvent(event);
+              console.log('Evento triggerSimulation disparado');
+            }}
+            disabled={simulationStatus === 'simulating'}
+          >
+            {simulationStatus === 'simulating' ? 'SIMULANDO...' : 'SIMULAR'}
+          </button>
+        )}
       </div>
 
       <Footer />

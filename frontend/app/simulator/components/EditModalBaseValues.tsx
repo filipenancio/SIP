@@ -1,5 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { NumericInput } from './NumericInput';
 
 interface EditModalBaseValuesProps {
   show: boolean;
@@ -11,33 +12,6 @@ interface EditModalBaseValuesProps {
   onChangeBaseMVA: (value: number) => void;
   onChangeBaseKV: (value: number) => void;
 }
-
-const NumericInput: React.FC<{
-  value: number;
-  onChange: (value: number) => void;
-  min?: number;
-  max?: number;
-  step?: number;
-  style?: React.CSSProperties;
-}> = ({ value, onChange, min, max, step = 0.01, style }) => {
-  return (
-    <input
-      type="number"
-      value={value}
-      onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-      min={min}
-      max={max}
-      step={step}
-      style={{
-        padding: '6px 8px',
-        border: '1px solid #ccc',
-        borderRadius: '4px',
-        fontSize: '12px',
-        ...style
-      }}
-    />
-  );
-};
 
 export const EditModalBaseValues: React.FC<EditModalBaseValuesProps> = ({
   show,

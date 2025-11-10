@@ -59,11 +59,9 @@ export default function Simulator() {
             >
               <option value="">Selecione um modelo do sistema</option>
               <option value="case3p.m">Sistema de 3 Barras</option>
-              <option value="case4gs.m">Sistema de 4 Barras</option>
-              <option value="case5">Sistema de 5 Barras</option>
-              <option value="case6ww.m">Sistema de 6 Barras</option>
-              <option value="case9.m">Sistema de 9 Barras</option>
-              <option value="case14.m">Sistema de 14 Barras</option>
+              <option value="case4p.m">Sistema de 4 Barras</option>
+              <option value="case5p.m">Sistema de 5 Barras</option>
+              <option value="case14p.m">Sistema de 14 Barras</option>
               <option value="numeric">Modelo com entrada/saída numérica</option>
             </select>
           </div>
