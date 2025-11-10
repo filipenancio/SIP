@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 export interface ViewPortBaseSVGProps {
   children: React.ReactNode;
@@ -27,7 +27,7 @@ export const ViewPortBaseSVG: React.FC<ViewPortBaseSVGProps> = ({
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Funções de controle de zoom e pan
-  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+  const handleWheel = (e: WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
     const newZoom = Math.min(Math.max(zoom * delta, 0.3), 3);
@@ -55,6 +55,17 @@ export const ViewPortBaseSVG: React.FC<ViewPortBaseSVGProps> = ({
       setPan({ x: newPanX, y: newPanY });
     }
   };
+
+  // Adicionar event listener para wheel com passive: false
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (svg) {
+      svg.addEventListener('wheel', handleWheel, { passive: false });
+      return () => {
+        svg.removeEventListener('wheel', handleWheel);
+      };
+    }
+  }, [zoom, pan]); // Dependências necessárias para o handleWheel
 
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
     if (e.button === 0) {
@@ -235,7 +246,6 @@ export const ViewPortBaseSVG: React.FC<ViewPortBaseSVGProps> = ({
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
-          onWheel={handleWheel}
         >
           <rect width="1200" height="480" fill="#ffffff" />
           

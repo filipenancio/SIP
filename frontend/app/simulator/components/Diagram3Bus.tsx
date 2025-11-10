@@ -9,11 +9,14 @@ interface BusPosition {
   y: number;
 }
 
-const busPositions: Record<number, BusPosition> = {
+export const busPositions3: Record<number, BusPosition> = {
   1: { x: 250, y: 250 },
   2: { x: 550, y: 250 },
   3: { x: 400, y: 400 }
 };
+
+// Para uso interno no componente
+const busPositions = busPositions3;
 
 export interface LineResult {
   from_bus: number;

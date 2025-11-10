@@ -12,7 +12,7 @@ interface BusPosition {
 }
 
 // Posições para sistema de 14 barras (disposição em grid otimizada)
-const busPositions: Record<number, BusPosition> = {
+export const busPositions14: Record<number, BusPosition> = {
   1: { x: 150, y: 150 },
   2: { x: 350, y: 150 },
   3: { x: 550, y: 150 },
@@ -28,6 +28,9 @@ const busPositions: Record<number, BusPosition> = {
   13: { x: 250, y: 450 },
   14: { x: 950, y: 450 }
 };
+
+// Para uso interno no componente
+const busPositions = busPositions14;
 
 // Componente para Linha de Transmissão com Resultado (colorida)
 const TransmissionLineResult: React.FC<{

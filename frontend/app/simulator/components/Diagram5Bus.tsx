@@ -11,14 +11,18 @@ interface BusPosition {
   y: number;
 }
 
-// Posições para sistema de 5 barras (formato pentagonal)
-const busPositions: Record<number, BusPosition> = {
-  1: { x: 350, y: 150 },  // Topo
-  2: { x: 550, y: 250 },  // Direita superior
-  3: { x: 500, y: 450 },  // Direita inferior
-  4: { x: 200, y: 450 },  // Esquerda inferior
-  5: { x: 150, y: 250 }   // Esquerda superior
+
+// Posições para sistema de 5 barras (pentágono)
+export const busPositions5: Record<number, BusPosition> = {
+  1: { x: 300, y: 100 },
+  2: { x: 450, y: 220 },
+  3: { x: 380, y: 400 },
+  4: { x: 220, y: 400 },
+  5: { x: 150, y: 220 }
 };
+
+// Para uso interno no componente
+const busPositions = busPositions5;
 
 // Componente para Linha de Transmissão com Resultado (colorida)
 const TransmissionLineResult: React.FC<{

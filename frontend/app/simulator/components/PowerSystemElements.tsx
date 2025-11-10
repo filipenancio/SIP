@@ -1,14 +1,14 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import MessageModal from './MessageModal';
 import { EditModalBus, type Bus } from './EditModalBus';
 import { EditModalGenerator, type Generator } from './EditModalGenerator';
 import { EditModalBranch, type Branch } from './EditModalBranch';
 import { EditModalBaseValues } from './EditModalBaseValues';
 import { ViewPortBaseSVG, DefaultLegend, BaseValuesDisplay, ResultTotals } from './ViewPortBaseSVG';
-import { Diagram3Bus, LineResult } from './Diagram3Bus';
-import Diagram4Bus from './Diagram4Bus';
-import Diagram5Bus from './Diagram5Bus';
-import Diagram14Bus from './Diagram14Bus';
+import { Diagram3Bus, busPositions3 } from './Diagram3Bus';
+import Diagram4Bus, { busPositions4 } from './Diagram4Bus';
+import Diagram5Bus, { busPositions5 } from './Diagram5Bus';
+import Diagram14Bus, { busPositions14 } from './Diagram14Bus';
 import { MPC, MPCResult, simulateSystem } from '../utils/SimulateUtils';
 import { TooltipBus } from './TooltipBus';
 import { TooltipGenerator } from './TooltipGenerator';
@@ -325,15 +325,19 @@ export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({
 }) => {
   // Usar sistema fornecido ou padrão (3 barras)
   const systemData = initialSystem || sistemaOriginal;
-  // Posições das barras no diagrama
-  const busPositions = {
-    1: { x: 250, y: 250 },
-    2: { x: 550, y: 250 },
-    3: { x: 400, y: 400 }
+  
+  // Posições das barras para cada sistema
+  // Usar as posições exportadas dos componentes Diagram correspondentes
+  const busPositionsMaps: Record<number, Record<number, { x: number; y: number }>> = {
+    3: busPositions3,
+    4: busPositions4,
+    5: busPositions5,
+    14: busPositions14
   };
 
-  // Calcular centro e zoom inicial
-  const calculateInitialView = () => {
+  // Calcular centro e zoom inicial baseado no número de barras
+  const calculateInitialView = (numBuses: number = 3) => {
+    const busPositions = busPositionsMaps[numBuses] || busPositionsMaps[3];
     const positions = Object.values(busPositions);
     
     // Calcular limites do diagrama com margem para elementos externos (gerador, carga)
@@ -370,7 +374,8 @@ export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({
     };
   };
 
-  const initialView = calculateInitialView();
+  const [sistemaState, setSistemaState] = useState(() => fixInitialBusTypes(createDeepCopy(systemData)));
+  const initialView = calculateInitialView(sistemaState.bus.length);
   
   const [pan, setPan] = useState(initialView.pan);
   const [zoom, setZoom] = useState(initialView.zoom);
@@ -388,7 +393,6 @@ export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({
   const [confirmBaseRestoreModal, setConfirmBaseRestoreModal] = useState({ show: false });
   const [generatorEditConfirmModal, setGeneratorEditConfirmModal] = useState({ show: false, generator: null as Generator | null });
   const [busTypeChangeModal, setbusTypeChangeModal] = useState({ show: false, message: '', busId: 0, newType: 1, onConfirm: () => {} });
-  const [sistemaState, setSistemaState] = useState(() => fixInitialBusTypes(createDeepCopy(systemData)));
   const [baseModal, setBaseModal] = useState({
     show: false,
     baseMVA: systemData.baseMVA,
@@ -403,6 +407,14 @@ export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({
   const [simulationError, setSimulationError] = useState<string | null>(null);
   
   const svgRef = useRef<SVGSVGElement>(null);
+
+  // Recalcular view quando o número de barras mudar
+  useEffect(() => {
+    const numBuses = sistemaState.bus.length;
+    const newView = calculateInitialView(numBuses);
+    setPan(newView.pan);
+    setZoom(newView.zoom);
+  }, [sistemaState.bus.length]);
 
   // Notificar mudanças de status
   React.useEffect(() => {
@@ -455,8 +467,8 @@ export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({
   }, []);
 
   const zoomIn = () => {
-    const centerX = 600; // Centro do viewBox
-    const centerY = 400;
+    const centerX = 600; // Centro do viewBox (1200/2)
+    const centerY = 240; // Centro do viewBox (480/2)
     const zoomFactor = 1.1; // Fator de zoom
     
     // Calcular novos valores baseados nos estados atuais
@@ -464,21 +476,13 @@ export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({
     const currentPan = pan;
     const newZoom = Math.min(currentZoom * zoomFactor, 3);
     
-    console.log('=== ZOOM IN ===');
-    console.log('currentZoom:', currentZoom, '-> newZoom:', newZoom);
-    console.log('currentPan:', currentPan);
-    console.log('centerX:', centerX, 'centerY:', centerY);
-    
     // Ponto do diagrama que está no centro
     const diagramX = (centerX - currentPan.x) / currentZoom;
     const diagramY = (centerY - currentPan.y) / currentZoom;
-    console.log('diagramX:', diagramX, 'diagramY:', diagramY);
     
     // Novo pan para manter esse ponto no centro
     const newPanX = centerX - diagramX * newZoom;
     const newPanY = centerY - diagramY * newZoom;
-    console.log('newPan:', { x: newPanX, y: newPanY });
-    console.log('delta pan:', { x: newPanX - currentPan.x, y: newPanY - currentPan.y });
     
     // Atualizar estados
     setZoom(newZoom);
@@ -486,30 +490,22 @@ export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({
   };
 
   const zoomOut = () => {
-    const centerX = 600;
-    const centerY = 400;
+    const centerX = 600; // Centro do viewBox (1200/2)
+    const centerY = 240; // Centro do viewBox (480/2)
     const zoomFactor = 1.1; // Mesmo fator do zoom in
     
     // Calcular novos valores baseados nos estados atuais
     const currentZoom = zoom;
     const currentPan = pan;
-    const newZoom = Math.max(currentZoom / zoomFactor, 0.5); // Dividir em vez de multiplicar por 0.8
-    
-    console.log('=== ZOOM OUT ===');
-    console.log('currentZoom:', currentZoom, '-> newZoom:', newZoom);
-    console.log('currentPan:', currentPan);
-    console.log('centerX:', centerX, 'centerY:', centerY);
+    const newZoom = Math.max(currentZoom / zoomFactor, 0.5); 
     
     // Ponto do diagrama que está no centro
     const diagramX = (centerX - currentPan.x) / currentZoom;
     const diagramY = (centerY - currentPan.y) / currentZoom;
-    console.log('diagramX:', diagramX, 'diagramY:', diagramY);
     
     // Novo pan para manter esse ponto no centro
     const newPanX = centerX - diagramX * newZoom;
     const newPanY = centerY - diagramY * newZoom;
-    console.log('newPan:', { x: newPanX, y: newPanY });
-    console.log('delta pan:', { x: newPanX - currentPan.x, y: newPanY - currentPan.y });
     
     // Atualizar estados
     setZoom(newZoom);
@@ -517,7 +513,8 @@ export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({
   };
 
   const resetView = () => {
-    const view = calculateInitialView();
+    const numBuses = sistemaState.bus.length;
+    const view = calculateInitialView(numBuses);
     setPan(view.pan);
     setZoom(view.zoom);
   };
