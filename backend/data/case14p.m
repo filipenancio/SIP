@@ -1,4 +1,4 @@
-function mpc = CasoBase_14barras
+function mpc = case14p
 %   Sistema teste 14 barras
 
 %   MATPOWER
