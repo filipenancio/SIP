@@ -5,7 +5,9 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import Footer from "../components/Footer";
 import HeaderChild from "../components/HeaderChild";
-import { ThreeBusSystemDiagram, sistemaOriginal } from "../components/PowerSystemElements";
+import MessageModal from "../components/MessageModal";
+import { BaseBusSystemDiagram } from "../components/PowerSystemElements";
+import { sistema3Barras } from "../data/case3p";
 import { sistema4Barras } from "../data/case4p";
 import { sistema5Barras } from "../data/case5p";
 import { sistema14Barras } from "../data/case14p";
@@ -21,19 +23,24 @@ export default function SystemModel() {
   const systemName = searchParams.get('system');
   const [simulationStatus, setSimulationStatus] = useState<'idle' | 'simulating' | 'result'>('idle');
   const [simulationResult, setSimulationResult] = useState<MPCResult | null>(null);
+  const [errorModal, setErrorModal] = useState<{ show: boolean; message: string }>({ 
+    show: false, 
+    message: '' 
+  });
   
   // Função para obter o sistema correto baseado no nome
   const getInitialSystem = (): MPC => {
     switch (systemName) {
+      case 'case3p.m':
+        return sistema3Barras
       case 'case4p.m':
         return sistema4Barras;
       case 'case5p.m':
         return sistema5Barras;
       case 'case14p.m':
         return sistema14Barras;
-      case 'case3p.m':
       default:
-        return sistemaOriginal;
+        return sistema3Barras;
     }
   };
 
@@ -53,6 +60,38 @@ export default function SystemModel() {
     window.addEventListener('simulationComplete', handleSimulationComplete);
     return () => {
       window.removeEventListener('simulationComplete', handleSimulationComplete);
+    };
+  }, []);
+
+  // Listener para capturar erros da simulação
+  useEffect(() => {
+    const handleSimulationError = (event: any) => {
+      console.error('Evento de erro de simulação capturado:', event.detail);
+      
+      const error = event.detail?.error;
+      let errorMessage = '';
+      
+      if (error instanceof Error) {
+        // Erros do backend
+        if (error.message === 'CONVERGENCE_ERROR') {
+          errorMessage = 'ERRO: Dados informados não convergiram!';
+        } else if (error.message === 'BACKEND_ERROR') {
+          errorMessage = 'ERRO: Simulação não concluída, aguarde e tente novamente mais tarde.';
+        } else {
+          // Erro na preparação dos dados (frontend)
+          errorMessage = 'Houve um erro na preparação dos dados de simulação. Por favor, tente novamente mais tarde.';
+        }
+      } else {
+        // Erro desconhecido
+        errorMessage = 'Houve um erro na preparação dos dados de simulação. Por favor, tente novamente mais tarde.';
+      }
+      
+      setErrorModal({ show: true, message: errorMessage });
+    };
+
+    window.addEventListener('simulationError', handleSimulationError);
+    return () => {
+      window.removeEventListener('simulationError', handleSimulationError);
     };
   }, []);
 
@@ -346,7 +385,7 @@ export default function SystemModel() {
           <h2 className={styles.systemTitle}>{getSystemTitle()}</h2>
           <div className={styles.systemDiagram} ref={diagramRef}>
             {(systemName === 'case3p.m' || systemName === 'case4p.m' || systemName === 'case5p.m' || systemName === 'case14p.m') ? (
-              <ThreeBusSystemDiagram
+              <BaseBusSystemDiagram
                 externalControls={true}
                 onSimulationStatusChange={setSimulationStatus}
                 initialSystem={getInitialSystem()}
@@ -473,6 +512,21 @@ export default function SystemModel() {
       </div>
 
       <Footer />
+      
+      {/* Modal de erro */}
+      <MessageModal
+        show={errorModal.show}
+        title="Erro na Simulação"
+        message={errorModal.message}
+        buttons={[
+          {
+            label: 'OK',
+            onClick: () => setErrorModal({ show: false, message: '' }),
+            variant: 'primary'
+          }
+        ]}
+        onClose={() => setErrorModal({ show: false, message: '' })}
+      />
     </div>
   );
 }

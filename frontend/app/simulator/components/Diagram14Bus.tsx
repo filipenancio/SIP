@@ -11,22 +11,22 @@ interface BusPosition {
   y: number;
 }
 
-// Posições para sistema de 14 barras (disposição em grid otimizada)
+// Posições para sistema de 14 barras (layout otimizado para minimizar cruzamentos)
 export const busPositions14: Record<number, BusPosition> = {
-  1: { x: 150, y: 150 },
-  2: { x: 350, y: 150 },
-  3: { x: 550, y: 150 },
-  4: { x: 650, y: 250 },
-  5: { x: 450, y: 250 },
-  6: { x: 250, y: 250 },
-  7: { x: 750, y: 350 },
-  8: { x: 850, y: 350 },
-  9: { x: 950, y: 250 },
-  10: { x: 1050, y: 350 },
-  11: { x: 150, y: 350 },
-  12: { x: 150, y: 450 },
-  13: { x: 250, y: 450 },
-  14: { x: 950, y: 450 }
+  1: { x: 300, y: 100 },   // Topo esquerda
+  2: { x: 500, y: 100 },   // Topo centro
+  3: { x: 700, y: 100 },   // Topo direita
+  4: { x: 600, y: 220 },   // Centro (hub principal)
+  5: { x: 400, y: 220 },   // Centro esquerda
+  6: { x: 200, y: 220 },   // Esquerda
+  7: { x: 800, y: 220 },   // Centro direita
+  8: { x: 1000, y: 220 },   // Direita
+  9: { x: 1000, y: 360 },   // Direita inferior
+  10: { x: 1000, y: 500 }, // Canto direito inferior
+  11: { x: 0, y: 500 },  // Canto esquerdo inferior
+  12: { x: 200, y: 360 },  // Esquerda inferior
+  13: { x: 400, y: 360 },  // Centro inferior esquerda
+  14: { x: 600, y: 360 }   // Centro inferior direita
 };
 
 // Para uso interno no componente

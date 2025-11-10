@@ -156,7 +156,34 @@ export async function simulateSystem(mpc: MPC): Promise<MPCResult> {
   
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Erro na simulação: ${errorText}`);
+    console.error('Erro na resposta do servidor:', errorText);
+    
+    // Tentar parsear como JSON para verificar se é um erro estruturado
+    try {
+      const errorJson = JSON.parse(errorText);
+      
+      // Verificar se é erro de não convergência
+      if (errorJson.detail && typeof errorJson.detail === 'string') {
+        if (errorJson.detail.toLowerCase().includes('não convergiu') || 
+            errorJson.detail.toLowerCase().includes('did not converge') ||
+            errorJson.detail.toLowerCase().includes('convergence')) {
+          throw new Error('CONVERGENCE_ERROR');
+        }
+      }
+      
+      // Outros erros do backend
+      throw new Error('BACKEND_ERROR');
+    } catch (parseError) {
+      // Se não conseguiu parsear, verificar no texto
+      if (errorText.toLowerCase().includes('não convergiu') || 
+          errorText.toLowerCase().includes('did not converge') ||
+          errorText.toLowerCase().includes('convergence')) {
+        throw new Error('CONVERGENCE_ERROR');
+      }
+      
+      // Erro genérico do backend
+      throw new Error('BACKEND_ERROR');
+    }
   }
   
   const rawResult = await response.json();

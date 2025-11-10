@@ -114,7 +114,71 @@ export function createElementRects(
 }
 
 /**
+ * Calcula a distância de um ponto a uma linha
+ */
+function distanceFromPointToLine(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
+  const A = px - x1;
+  const B = py - y1;
+  const C = x2 - x1;
+  const D = y2 - y1;
+
+  const dot = A * C + B * D;
+  const lenSq = C * C + D * D;
+  let param = -1;
+  
+  if (lenSq !== 0) {
+    param = dot / lenSq;
+  }
+
+  let xx, yy;
+
+  if (param < 0) {
+    xx = x1;
+    yy = y1;
+  } else if (param > 1) {
+    xx = x2;
+    yy = y2;
+  } else {
+    xx = x1 + param * C;
+    yy = y1 + param * D;
+  }
+
+  const dx = px - xx;
+  const dy = py - yy;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+/**
+ * Verifica se um retângulo está próximo de uma linha
+ */
+function rectangleNearLine(rect: Element, x1: number, y1: number, x2: number, y2: number, threshold: number = 15): boolean {
+  // Verificar os 4 cantos do retângulo
+  const corners = [
+    { x: rect.x, y: rect.y },
+    { x: rect.x + rect.width, y: rect.y },
+    { x: rect.x, y: rect.y + rect.height },
+    { x: rect.x + rect.width, y: rect.y + rect.height }
+  ];
+  
+  for (const corner of corners) {
+    if (distanceFromPointToLine(corner.x, corner.y, x1, y1, x2, y2) < threshold) {
+      return true;
+    }
+  }
+  
+  // Verificar o centro do retângulo também
+  const centerX = rect.x + rect.width / 2;
+  const centerY = rect.y + rect.height / 2;
+  if (distanceFromPointToLine(centerX, centerY, x1, y1, x2, y2) < threshold) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
  * Cria retângulo para uma linha de transmissão
+ * DEPRECATED: Use rectangleNearLine para verificação mais precisa
  */
 export function createLineRect(x1: number, y1: number, x2: number, y2: number): Element {
   const minX = Math.min(x1, x2);
@@ -128,6 +192,92 @@ export function createLineRect(x1: number, y1: number, x2: number, y2: number): 
     y: minY - 10,
     width: (maxX - minX) + 20,
     height: (maxY - minY) + 20
+  };
+}
+
+/**
+ * Encontra a melhor posição para um label evitando sobreposições
+ * Versão melhorada que verifica distância real de linhas
+ * @param busPosition Posição central da barra
+ * @param labelText Texto do label
+ * @param obstacles Lista de elementos retangulares que devem ser evitados
+ * @param lines Lista de linhas que devem ser evitadas
+ * @param fontSize Tamanho da fonte do label
+ * @returns Posição otimizada para o label
+ */
+export function findBestLabelPositionWithLines(
+  busPosition: Position,
+  labelText: string,
+  obstacles: Element[],
+  lines: Array<{x1: number, y1: number, x2: number, y2: number}>,
+  fontSize: number = 14
+): { x: number; y: number; position: string } {
+  const labelDimensions = calculateLabelDimensions(labelText, fontSize);
+  
+  // Debug para Barra 6
+  const isBus6 = labelText.includes('6');
+  if (isBus6) {
+    console.log('=== DEBUG BARRA 6 ===');
+    console.log('Bus position:', busPosition);
+    console.log('Label dimensions:', labelDimensions);
+    console.log('Number of obstacles:', obstacles.length);
+    console.log('Number of lines:', lines.length);
+  }
+  
+  // Tentar cada posição em ordem de preferência
+  for (const position of LABEL_POSITIONS) {
+    const labelX = busPosition.x + position.dx;
+    const labelY = busPosition.y + position.dy;
+    
+    const labelRect = createLabelRect(labelX, labelY, labelDimensions);
+    
+    if (isBus6) {
+      console.log(`\nTrying position "${position.name}" at (${labelX}, ${labelY})`);
+      console.log('Label rect:', labelRect);
+    }
+    
+    // Verificar se há colisão com algum obstáculo retangular
+    let hasCollision = false;
+    for (const obstacle of obstacles) {
+      if (rectanglesOverlap(labelRect, obstacle)) {
+        hasCollision = true;
+        if (isBus6) {
+          console.log('  ❌ Collision with obstacle:', obstacle);
+        }
+        break;
+      }
+    }
+    
+    // Se não colidiu com obstáculos, verificar linhas
+    if (!hasCollision) {
+      for (const line of lines) {
+        if (rectangleNearLine(labelRect, line.x1, line.y1, line.x2, line.y2, 15)) {
+          hasCollision = true;
+          if (isBus6) {
+            console.log(`  ❌ Too close to line (${line.x1},${line.y1}) -> (${line.x2},${line.y2})`);
+          }
+          break;
+        }
+      }
+    }
+    
+    // Se não há colisão, esta é uma posição válida
+    if (!hasCollision) {
+      if (isBus6) {
+        console.log(`  ✓ Position "${position.name}" is valid!`);
+      }
+      return { x: labelX, y: labelY, position: position.name };
+    }
+  }
+  
+  // Se nenhuma posição está livre, retorna a posição padrão (abaixo)
+  if (isBus6) {
+    console.log('⚠️ No valid position found, using default (below)');
+  }
+  return { 
+    x: busPosition.x, 
+    y: busPosition.y + 50, 
+    position: 'abaixo-forcado' 
   };
 }
 
@@ -147,6 +297,15 @@ export function findBestLabelPosition(
 ): { x: number; y: number; position: string } {
   const labelDimensions = calculateLabelDimensions(labelText, fontSize);
   
+  // Debug para Barra 6
+  const isBus6 = labelText.includes('6');
+  if (isBus6) {
+    console.log('=== DEBUG BARRA 6 ===');
+    console.log('Bus position:', busPosition);
+    console.log('Label dimensions:', labelDimensions);
+    console.log('Number of obstacles:', obstacles.length);
+  }
+  
   // Tentar cada posição em ordem de preferência
   for (const position of LABEL_POSITIONS) {
     const labelX = busPosition.x + position.dx;
@@ -154,22 +313,36 @@ export function findBestLabelPosition(
     
     const labelRect = createLabelRect(labelX, labelY, labelDimensions);
     
+    if (isBus6) {
+      console.log(`\nTrying position "${position.name}" at (${labelX}, ${labelY})`);
+      console.log('Label rect:', labelRect);
+    }
+    
     // Verificar se há colisão com algum obstáculo
     let hasCollision = false;
     for (const obstacle of obstacles) {
       if (rectanglesOverlap(labelRect, obstacle)) {
         hasCollision = true;
+        if (isBus6) {
+          console.log('  ❌ Collision with obstacle:', obstacle);
+        }
         break;
       }
     }
     
     // Se não há colisão, esta é uma posição válida
     if (!hasCollision) {
+      if (isBus6) {
+        console.log(`  ✓ Position "${position.name}" is valid!`);
+      }
       return { x: labelX, y: labelY, position: position.name };
     }
   }
   
   // Se nenhuma posição está livre, retorna a posição padrão (abaixo)
+  if (isBus6) {
+    console.log('⚠️ No valid position found, using default (below)');
+  }
   return { 
     x: busPosition.x, 
     y: busPosition.y + 50, 
@@ -200,13 +373,25 @@ export function calculateOptimalLabelPositions(
   
   for (const bus of buses) {
     const obstacles: Element[] = [];
+    const lines: Array<{x1: number, y1: number, x2: number, y2: number}> = [];
+    const isBus6 = bus.id === 6;
+    
+    if (isBus6) {
+      console.log('\n=== CALCULATING OBSTACLES FOR BUS 6 ===');
+      console.log('Bus 6 position:', bus);
+    }
     
     // Adicionar elementos da própria barra
-    obstacles.push(...createElementRects(
+    const ownElements = createElementRects(
       { x: bus.x, y: bus.y },
       bus.hasGenerator,
       bus.hasLoad
-    ));
+    );
+    obstacles.push(...ownElements);
+    
+    if (isBus6) {
+      console.log('Own elements:', ownElements);
+    }
     
     // Adicionar elementos de barras próximas (dentro de 150px)
     for (const otherBus of buses) {
@@ -218,35 +403,60 @@ export function calculateOptimalLabelPositions(
       );
       
       if (distance < 150) {
-        obstacles.push(...createElementRects(
+        const otherElements = createElementRects(
           { x: otherBus.x, y: otherBus.y },
           otherBus.hasGenerator,
           otherBus.hasLoad
-        ));
+        );
+        obstacles.push(...otherElements);
+        
+        if (isBus6) {
+          console.log(`Nearby bus ${otherBus.id} at distance ${distance.toFixed(1)}:`, otherElements);
+        }
         
         // Adicionar área do label da barra próxima (posição padrão)
         const otherLabelDims = calculateLabelDimensions(otherBus.label);
-        obstacles.push(createLabelRect(otherBus.x, otherBus.y + 50, otherLabelDims));
+        const otherLabelRect = createLabelRect(otherBus.x, otherBus.y + 50, otherLabelDims);
+        obstacles.push(otherLabelRect);
+        
+        if (isBus6) {
+          console.log(`  Label of bus ${otherBus.id}:`, otherLabelRect);
+        }
       }
     }
     
-    // Adicionar linhas conectadas a esta barra
+    // Armazenar linhas conectadas para verificação mais precisa
     for (const branch of branches) {
       if (branch.from === bus.id || branch.to === bus.id) {
         const otherBusId = branch.from === bus.id ? branch.to : branch.from;
         const otherBusPos = busPositions[otherBusId];
         
         if (otherBusPos) {
-          obstacles.push(createLineRect(bus.x, bus.y, otherBusPos.x, otherBusPos.y));
+          lines.push({
+            x1: bus.x,
+            y1: bus.y,
+            x2: otherBusPos.x,
+            y2: otherBusPos.y
+          });
+          
+          if (isBus6) {
+            console.log(`Line to bus ${otherBusId} at (${otherBusPos.x}, ${otherBusPos.y})`);
+          }
         }
       }
     }
     
-    // Calcular melhor posição para o label
-    const position = findBestLabelPosition(
+    if (isBus6) {
+      console.log('Total obstacles:', obstacles.length);
+      console.log('Total lines:', lines.length);
+    }
+    
+    // Calcular melhor posição para o label usando verificação mais inteligente
+    const position = findBestLabelPositionWithLines(
       { x: bus.x, y: bus.y },
       bus.label,
-      obstacles
+      obstacles,
+      lines
     );
     
     labelPositions.set(bus.id, position);
@@ -294,10 +504,16 @@ export function calculateLineLabelPosition(
   
   const labelDims = calculateLabelDimensions(label);
   
+  // Detectar se é uma linha descendente (para baixo ou horizontal descendente)
+  // Quando y2 >= y1 e x2 >= x1, aumentar a distância do label
+  const isDescendingLine = (y2 >= y1 && x2 >= x1);
+  const distanceMultiplier = isDescendingLine ? 1.4 : 1.0; // 40% mais afastado para linhas descendentes
+  
   // Tentar diferentes posições perpendiculares à linha
   for (const offset of LINE_LABEL_OFFSETS) {
-    const testX = midX + perpX * offset.distance * offset.side;
-    const testY = midY + perpY * offset.distance * offset.side;
+    const adjustedDistance = offset.distance * distanceMultiplier;
+    const testX = midX + perpX * adjustedDistance * offset.side;
+    const testY = midY + perpY * adjustedDistance * offset.side;
     
     const labelRect: Element = {
       x: testX - labelDims.width / 2,
@@ -324,10 +540,12 @@ export function calculateLineLabelPosition(
     }
   }
   
-  // Se não encontrou posição livre, usar posição padrão (lado direito 15px)
+  // Se não encontrou posição livre, usar posição padrão (lado direito com distância ajustada)
+  const defaultDistance = isDescendingLine ? 21 : 15; // 40% maior para linhas descendentes
+  
   return {
-    x: midX + perpX * 15,
-    y: midY + perpY * 15,
+    x: midX + perpX * defaultDistance,
+    y: midY + perpY * defaultDistance,
     position: 'lado-direito-15-default'
   };
 }
