@@ -6,15 +6,18 @@ API robusta construída com FastAPI para simulação de sistemas elétricos de p
 
 ### 🔌 Simulação de Fluxo de Potência
 - **Processamento Pandapower**: Análise de casos elétricos padrão (formato MATPOWER .m)
-- **Validação de Dados**: Verificação automática de parâmetros elétricos
+- **Suporte a Transformadores**: Conversão automática de transformadores para formato LineResult
+- **Validação de baseKV**: Correção automática de valores zerados (baseKV=0 → 230 kV)
 - **Múltiplos Casos**: Suporte a diferentes sistemas (3, 4, 5, 6, 9, 14 barras)
 - **Resultados Detalhados**: Tensões, fluxos de potência, perdas e capacidades
+- **Modo Debug Configurável**: Flag `DEBUG_ENABLED` para controlar logs de depuração
 
 ### 📊 API RESTful
-- **Endpoints Documentados**: Swagger UI automático
+- **Endpoints Documentados**: Swagger UI e ReDoc automáticos
 - **Modelos Pydantic**: Validação robusta de entrada e saída
 - **Tratamento de Erros**: Respostas padronizadas para diferentes cenários
 - **CORS Configurado**: Integração completa com frontend
+- **Upload de Arquivos**: Suporte a upload de arquivos MATPOWER customizados
 
 ## 🛠️ Tecnologias
 
@@ -25,6 +28,23 @@ API robusta construída com FastAPI para simulação de sistemas elétricos de p
 - **Uvicorn**: Servidor ASGI de produção
 - **NumPy & Pandas**: Processamento de dados numéricos
 - **httpx**: Cliente HTTP para testes
+
+## 🔧 Configuração de Debug
+
+O backend possui um sistema de debug configurável via flag no código:
+
+```python
+# backend/app/services/matpower_service.py
+class MatpowerService:
+    DEBUG_ENABLED = False  # True para ativar logs de debug
+```
+
+**Logs de Debug incluem:**
+- Criação e conversão de redes Pandapower
+- Correção de baseKV zerado
+- Conversão de transformadores para linhas
+- Detalhes de barras, linhas, geradores e cargas
+- Erros e exceções durante simulação
 
 ## 📁 Estrutura do Projeto
 
@@ -138,17 +158,29 @@ Simula um sistema a partir de um arquivo MATPOWER pré-carregado.
       "q_to_mvar": -12.0,
       "pl_mw": 0.5,
       "ql_mvar": 0.5,
-      "loading_percent": 45.2
+      "i_from_ka": 0.123,
+      "i_to_ka": 0.122,
+      "i_ka": 0.123,
+      "vm_from_pu": 1.05,
+      "va_from_degree": 0.0,
+      "vm_to_pu": 1.03,
+      "va_to_degree": -2.5,
+      "loading_percent": 45.2,
+      "in_service": true
     }
   ],
   "generators": [...],
   "loads": [...],
   "ext_grid": {...},
   "genCapacityP": 150.0,
+  "genCapacityQmin": -50.0,
+  "genCapacityQmax": 100.0,
   "loadSystemP": 65.0,
   "loadSystemQ": 35.0
 }
 ```
+
+**Observação:** O campo `lines` inclui tanto linhas de transmissão quanto transformadores. Os transformadores são automaticamente convertidos para o formato `LineResult` usando as barras de alta e baixa tensão (hv_bus → from_bus, lv_bus → to_bus).
 
 ### `POST /sisep/simulate/matpower/upload`
 Simula um sistema a partir de um arquivo MATPOWER enviado.
@@ -212,17 +244,30 @@ docker run -p 8000:8000 sisep-backend
 1. **Erro na simulação Pandapower:**
    - Verifique se o arquivo .m está no formato correto MATPOWER
    - Confirme que todos os parâmetros elétricos são válidos
+   - Ative o modo debug (`DEBUG_ENABLED = True`) para mais informações
 
-2. **Erro de CORS:**
+2. **baseKV zerado:**
+   - O sistema corrige automaticamente baseKV=0 para 230 kV
+   - Ative debug para ver logs de correção
+
+3. **Transformadores não aparecem:**
+   - Transformadores são automaticamente convertidos para linhas
+   - Verifique o campo `lines` na resposta da API
+
+4. **Erro de CORS:**
    - Verifique as configurações de CORS no `main.py`
    - Confirme se o frontend está em http://localhost:3000
 
-3. **Dependências:**
+5. **Dependências:**
    - Use Python >= 3.9
    - Reinstale: `pip install -r requirements.txt --force-reinstall`
 
 ### Logs de Debug
 ```bash
+# Ativar debug no código
+# backend/app/services/matpower_service.py
+DEBUG_ENABLED = True
+
 # Docker logs
 docker-compose logs backend -f
 

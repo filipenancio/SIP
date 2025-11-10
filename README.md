@@ -1,22 +1,43 @@
-# Simulador Interativo de Sistema Elétrico de de Potência - SISEP
+# Simulador Interativo de Sistema Elétrico de Potência - SISEP
 
 ## Descrição
-Sistema web para simulação e visualização interativa de sistemas elétricos de potência. O projeto combina uma interface moderna em Next.js com uma API robusta em FastAPI, utilizando o Pandapower para análise de fluxo de potência.
+Sistema web completo para simulação e visualização interativa de sistemas elétricos de potência. O projeto combina uma interface moderna em Next.js com uma API robusta em FastAPI, utilizando o Pandapower para análise de fluxo de potência. Oferece dois modos de operação: **Modelo Interativo** com diagramas SVG editáveis e **Modelo Numérico** com entrada/saída de dados tabulares.
 
 ## Funcionalidades
 
-### 🔋 Interface Interativa
-- **Diagrama SVG Interativo**: Visualização do sistema de 3 barras com pan, zoom e edição
-- **Edição de Parâmetros**: Clique nos elementos (barras, geradores, linhas) para editar valores
-- **Gerenciamento de Geradores**: Sistema inteligente para adicionar/remover geradores
-- **Tooltips Informativos**: Hover sobre elementos para ver informações detalhadas
-- **Sistema de Restauração**: Restaure elementos individuais ou todo o sistema aos valores originais
+### 🎯 Dois Modelos de Operação
+
+#### 📊 Modelo Numérico
+- **Entrada Tabular**: Edição de dados em formato de tabela
+- **Dados Estruturados**: Barras, geradores e linhas de transmissão
+- **Validação Automática**: Verificação de valores em tempo real
+- **Importação/Exportação**: Suporte a arquivos MATPOWER (.m)
+- **Casos Pré-Carregados**: Sistemas de 3, 4, 5 e 14 barras
+- **Relatórios PDF**: Exportação de resultados completos
+
+#### 🖼️ Modelo Interativo  
+- **Diagrama SVG Interativo**: Visualização gráfica dos sistemas elétricos
+- **Pan & Zoom**: Navegação fluida com mouse e roda de scroll
+- **Edição Visual**: Clique nos elementos para editar parâmetros
+- **Sistemas Suportados**: 3, 4, 5 e 14 barras com diagramas dedicados
+- **Tooltips Informativos**: Informações detalhadas ao passar o mouse
+- **Legendas Visuais**: Identificação clara de elementos do sistema
+- **Exportação de Relatórios**: Geração de PDF com diagrama e resultados
 
 ### ⚡ Backend Robusto
-- **API FastAPI**: Endpoints para simulação de fluxo de potência
+- **API FastAPI**: Endpoints RESTful para simulação de fluxo de potência
 - **Integração Pandapower**: Processamento de casos elétricos padrão
-- **Validação de Dados**: Verificação automática de parâmetros elétricos
-- **Documentação Automática**: Swagger UI disponível
+- **Suporte a Transformadores**: Conversão automática de transformadores para linhas
+- **Validação de baseKV**: Correção automática de valores zerados
+- **Modo Debug Configurável**: Flag para controlar logs de depuração
+- **Documentação Automática**: Swagger UI e ReDoc disponíveis
+
+### 🔧 Recursos Avançados
+- **Gerenciamento de Geradores**: Sistema inteligente para adicionar/remover
+- **Sistema de Restauração**: Restaure elementos ou sistema completo
+- **MessageModal**: Feedback visual para operações e erros
+- **Validação em Tempo Real**: Verificação automática de parâmetros elétricos
+- **Backup Automático**: Dados originais preservados para restauração
 
 ## Estrutura do Projeto
 ```
@@ -38,16 +59,28 @@ SISEP/
 ## Tecnologias Utilizadas
 
 ### Frontend
-- **Next.js 15.5.6**: Framework React moderno
-- **TypeScript**: Tipagem estática para maior confiabilidade
-- **SVG Interativo**: Diagramas vetoriais responsivos
-- **CSS Modules**: Estilização componentizada
+- **Next.js 15.3.0**: Framework React moderno com App Router
+- **React 19**: Biblioteca de componentes com hooks avançados
+- **TypeScript 5**: Tipagem estática para maior confiabilidade
+- **SVG Interativo**: Diagramas vetoriais responsivos e editáveis
+- **CSS Modules**: Estilização componentizada e isolada
+- **jsPDF 3.0.3**: Geração de relatórios em PDF com diagrama
 
 ### Backend
 - **FastAPI**: Framework Python para APIs de alta performance
-- **Pandapower**: Simulação de sistemas elétricos
-- **Pydantic**: Validação de dados
-- **Pytest**: Framework de testes
+- **Pandapower**: Simulação de sistemas elétricos de potência
+- **Pydantic**: Validação de dados e serialização
+- **Pytest**: Framework de testes automatizados
+- **NumPy & Pandas**: Processamento de dados numéricos
+
+## Casos de Teste Disponíveis
+O sistema inclui arquivos MATPOWER pré-carregados:
+- **case3p.m**: Sistema de 3 barras (modelo numérico e interativo)
+- **case4gs.m**: Sistema de 4 barras (modelo numérico e interativo)
+- **case5.m**: Sistema de 5 barras (modelo numérico e interativo)
+- **case6ww.m**: Sistema de 6 barras (somente modelo numérico)
+- **case9.m**: Sistema IEEE de 9 barras (somente modelo numérico)
+- **case14.m**: Sistema IEEE de 14 barras (modelo numérico e interativo)
 
 ## Requisitos
 - **Docker** >= 20.10
@@ -96,25 +129,43 @@ npm run dev
 
 ## Como Usar
 
-### 1. Navegação no Diagrama
-- **Pan**: Clique e arraste para mover o diagrama
-- **Zoom**: Use a roda do mouse para ampliar/reduzir
-- **Centralização**: Recarregue a página para voltar à visualização inicial
+### 🎯 Seleção de Modelo
+Na página inicial, escolha entre:
+- **Modelo Numérico**: Entrada/saída tabular de dados
+- **Modelo Interativo**: Visualização gráfica e edição visual
 
-### 2. Edição de Elementos
-- **Barras**: Clique na barra azul para editar tensão, carga e status do gerador
-- **Geradores**: Clique no quadrado verde para editar potências e limites
-- **Linhas**: Clique na linha cinza para editar parâmetros elétricos
+### 📊 Modelo Numérico
+1. **Selecione ou carregue um caso**: Escolha um sistema pré-carregado ou importe arquivo .m
+2. **Edite os dados**: Modifique valores nas tabelas de barras, geradores e linhas
+3. **Simule**: Clique em "Simular" para executar o fluxo de potência
+4. **Visualize resultados**: Analise tensões, fluxos e perdas
+5. **Exporte relatório**: Gere PDF com todos os dados e resultados
 
-### 3. Gerenciamento de Geradores
-- **Adicionar**: Ative o toggle "Possui Gerador" na edição da barra
-- **Remover**: Desative o toggle "Possui Gerador"
-- **Restaurar**: Use o botão ↻ para voltar aos valores originais
+### 🖼️ Modelo Interativo
+1. **Navegação no Diagrama**:
+   - **Pan**: Clique e arraste para mover o diagrama
+   - **Zoom**: Use a roda do mouse para ampliar/reduzir
+   - **Centralização**: Recarregue a página para voltar à posição inicial
 
-### 4. Sistema de Restauração
-- **Elemento Individual**: Botão ↻ em cada modal de edição
-- **Confirmação**: Sistema pergunta antes de restaurar
-- **Valores Originais**: Baseados no arquivo case3p.m original
+2. **Edição de Elementos**:
+   - **Barras**: Clique no círculo azul para editar tensão, carga e tipo
+   - **Geradores**: Clique no quadrado verde para editar potências e limites
+   - **Linhas**: Clique na linha cinza para editar impedâncias
+
+3. **Gerenciamento de Geradores**:
+   - **Adicionar**: Ative o toggle "Possui Gerador" na edição da barra
+   - **Remover**: Desative o toggle "Possui Gerador"
+   - **Restaurar**: Use o botão ↻ para voltar aos valores originais
+
+4. **Simulação e Resultados**:
+   - Clique em "Simular" para executar o fluxo de potência
+   - Visualize resultados nas tooltips (passe o mouse sobre elementos)
+   - Exporte relatório PDF com diagrama colorido e tabelas de resultados
+
+5. **Sistema de Restauração**:
+   - **Elemento Individual**: Botão ↻ em cada modal de edição
+   - **Sistema Completo**: Botão "Restaurar Sistema" restaura todos os elementos
+   - **Confirmação**: Sistema solicita confirmação antes de restaurar
 
 ## Casos de Teste
 O sistema inclui casos de teste padrão:
