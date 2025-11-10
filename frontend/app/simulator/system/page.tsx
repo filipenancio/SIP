@@ -1,17 +1,41 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import styles from "../styles.module.css";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import Footer from "../components/Footer";
 import HeaderChild from "../components/HeaderChild";
-import { ThreeBusSystemDiagram } from "../components/PowerSystemElements";
+import { ThreeBusSystemDiagram, sistemaOriginal } from "../components/PowerSystemElements";
+import { MPC, MPCResult } from "../utils/SimulateUtils";
+import { mpcToMatpower } from "../utils/MPCToMatpower";
+import { formatInput } from "../utils/FormattedInput";
+import { formatResults } from "../utils/FormattedOutput";
+import html2canvas from 'html2canvas';
 
 export default function SystemModel() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const systemName = searchParams.get('system');
   const [simulationStatus, setSimulationStatus] = useState<'idle' | 'simulating' | 'result'>('idle');
+  const [simulationResult, setSimulationResult] = useState<MPCResult | null>(null);
+  const [inputMPC, setInputMPC] = useState<MPC>(sistemaOriginal);
+  const diagramRef = useRef<HTMLDivElement>(null);
+  const legendRef = useRef<HTMLDivElement>(null);
+
+  // Listener para capturar dados da simulação
+  useEffect(() => {
+    const handleSimulationComplete = (event: any) => {
+      if (event.detail) {
+        setSimulationResult(event.detail.result);
+        setInputMPC(event.detail.input);
+      }
+    };
+
+    window.addEventListener('simulationComplete', handleSimulationComplete);
+    return () => {
+      window.removeEventListener('simulationComplete', handleSimulationComplete);
+    };
+  }, []);
 
   const getSystemTitle = () => {
     switch (systemName) {
@@ -25,6 +49,263 @@ export default function SystemModel() {
         return 'Sistema de 14 Barras';
       default:
         return 'Sistema';
+    }
+  };
+
+  const generatePDF = async () => {
+    if (!simulationResult || !inputMPC) {
+      alert('Nenhum resultado de simulação disponível para exportar.');
+      return;
+    }
+
+    try {
+      // Importar jsPDF dinamicamente
+      const jsPDFModule = await import('jspdf');
+      const jsPDF = jsPDFModule.default || jsPDFModule;
+      
+      if (!jsPDF) {
+        throw new Error('Falha ao carregar biblioteca jsPDF');
+      }
+      
+      // Criar PDF em orientação retrato
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 20;
+      const lineHeight = 5;
+      const maxLineWidth = pageWidth - (margin * 2);
+      let yPosition = margin;
+
+      // Função para quebrar texto respeitando a largura máxima
+      const wrapText = (text: string, maxWidth: number, fontSize: number): string[] => {
+        doc.setFontSize(fontSize);
+        
+        if (!text || text.trim() === '') {
+          return [''];
+        }
+        
+        const lines: string[] = [];
+        let currentLine = '';
+        
+        for (let i = 0; i < text.length; i++) {
+          const char = text[i];
+          const testLine = currentLine + char;
+          
+          if (doc.getTextWidth(testLine) <= maxWidth) {
+            currentLine = testLine;
+          } else {
+            if (currentLine.length > 0) {
+              lines.push(currentLine);
+              currentLine = char;
+            } else {
+              lines.push(char);
+              currentLine = '';
+            }
+          }
+        }
+        
+        if (currentLine.length > 0) {
+          lines.push(currentLine);
+        }
+        
+        return lines.length > 0 ? lines : [''];
+      };
+
+      // Função para verificar se precisa de nova página
+      const checkNewPage = (linesToAdd: number = 1) => {
+        if (yPosition + (lineHeight * linesToAdd) > pageHeight - margin) {
+          doc.addPage();
+          yPosition = margin;
+          return true;
+        }
+        return false;
+      };
+
+      // Título do relatório
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text("Relatório de Simulação - SISEP", pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += lineHeight * 2;
+
+      // Data e hora
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      const currentDate = new Date().toLocaleString('pt-BR');
+      doc.text(`Gerado em: ${currentDate}`, margin, yPosition);
+      yPosition += lineHeight;
+      doc.text(`Sistema: ${getSystemTitle()}`, margin, yPosition);
+      yPosition += lineHeight * 2;
+
+      // Seção de entrada
+      checkNewPage(3);
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Entrada (Código MATPOWER):", margin, yPosition);
+      yPosition += lineHeight * 1.5;
+
+      // Converter MPC para formato MATPOWER e formatar
+      doc.setFontSize(8);
+      doc.setFont("courier", "normal");
+      const matpowerText = mpcToMatpower(inputMPC, systemName?.replace('.m', '') || 'case3p');
+      const formattedInputText = formatInput(matpowerText);
+      const inputLines = formattedInputText.split('\n');
+      
+      for (const originalLine of inputLines) {
+        const wrappedLines = wrapText(originalLine, maxLineWidth, 8);
+        
+        for (const wrappedLine of wrappedLines) {
+          checkNewPage();
+          doc.text(wrappedLine, margin, yPosition);
+          yPosition += lineHeight;
+        }
+      }
+
+      yPosition += lineHeight;
+
+      // Seção de saída
+      checkNewPage(3);
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Resultados da Simulação:", margin, yPosition);
+      yPosition += lineHeight * 1.5;
+
+      // Converter resultado para formato compatível com formatResults
+      const resultForFormatting = {
+        buses: simulationResult.bus.map(b => ({
+          bus_id: b.bus_id,
+          vm_pu: b.vm_pu,
+          va_degree: b.va_degree,
+          p_mw: b.p_mw,
+          q_mvar: b.q_mvar
+        })),
+        generators: simulationResult.generators,
+        loads: simulationResult.loads,
+        lines: simulationResult.lines.map(l => ({
+          from_bus: l.from_bus - 1, // Converter de 1-indexed para 0-indexed
+          to_bus: l.to_bus - 1,
+          p_from_mw: l.p_from_mw,
+          q_from_mvar: l.q_from_mvar,
+          p_to_mw: l.p_to_mw,
+          q_to_mvar: l.q_to_mvar,
+          pl_mw: l.p_loss_mw,
+          ql_mvar: l.q_loss_mvar
+        })),
+        ext_grid: simulationResult.ext_grid.length > 0 ? simulationResult.ext_grid[0] : null,
+        genCapacityP: simulationResult.genCapacityP,
+        genCapacityQmin: simulationResult.genCapacityQmin,
+        genCapacityQmax: simulationResult.genCapacityQmax,
+        loadSystemP: simulationResult.loadSystemP,
+        loadSystemQ: simulationResult.loadSystemQ
+      };
+
+      // Processar saída com fonte 9
+      doc.setFontSize(9);
+      doc.setFont("courier", "normal");
+      const formattedOutput = formatResults(resultForFormatting);
+      const outputLines = formattedOutput.split('\n');
+      
+      for (const originalLine of outputLines) {
+        if (originalLine.trim() === '') {
+          yPosition += lineHeight * 0.5;
+          continue;
+        }
+      
+        checkNewPage();
+        doc.text(originalLine, margin, yPosition);
+        yPosition += lineHeight;
+      }
+
+      // Capturar diagrama (apenas SVG sem controles)
+      if (diagramRef.current) {
+        checkNewPage(80);
+        
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text("Diagrama do Sistema:", margin, yPosition);
+        yPosition += lineHeight * 2;
+
+        // Adicionar classe temporária para ocultar elementos indesejados
+        diagramRef.current.classList.add('pdf-export-mode');
+
+        // Capturar o diagrama
+        const canvas = await html2canvas(diagramRef.current, {
+          backgroundColor: '#ffffff',
+          scale: 2,
+          logging: false,
+          useCORS: true,
+          onclone: (clonedDoc) => {
+            const clonedElement = clonedDoc.querySelector('.pdf-export-mode');
+            if (clonedElement) {
+              // Ocultar elementos não desejados no clone
+              const elementsToHide = clonedElement.querySelectorAll(
+                '.zoom-controls, .legend-box, .base-values-box, .result-totals-box, button'
+              );
+              elementsToHide.forEach(el => {
+                (el as HTMLElement).style.display = 'none';
+              });
+            }
+          }
+        });
+        
+        // Remover classe temporária
+        diagramRef.current.classList.remove('pdf-export-mode');
+        
+        const imgData = canvas.toDataURL('image/png');
+        const imgWidth = pageWidth - (margin * 2);
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        // Adicionar nova página se necessário
+        if (yPosition + imgHeight > pageHeight - margin) {
+          doc.addPage();
+          yPosition = margin;
+        }
+        
+        doc.addImage(imgData, 'PNG', margin, yPosition, imgWidth, imgHeight);
+        yPosition += imgHeight + lineHeight;
+      }
+
+      // Adicionar legenda em formato grid
+      if (legendRef.current) {
+        checkNewPage(50);
+        
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text("Legenda:", margin, yPosition);
+        yPosition += lineHeight * 2;
+
+        // Capturar a legenda
+        const canvas = await html2canvas(legendRef.current, {
+          backgroundColor: '#ffffff',
+          scale: 2,
+          logging: false,
+          useCORS: true
+        });
+        
+        const imgData = canvas.toDataURL('image/png');
+        const imgWidth = pageWidth - (margin * 2);
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        // Adicionar nova página se necessário
+        if (yPosition + imgHeight > pageHeight - margin) {
+          doc.addPage();
+          yPosition = margin;
+        }
+        
+        doc.addImage(imgData, 'PNG', margin, yPosition, imgWidth, imgHeight);
+      }
+
+      // Salvar o PDF
+      const fileName = `relatorio-${systemName?.replace('.m', '') || 'sistema'}-${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      alert(`Erro ao gerar o relatório PDF: ${errorMessage}\n\nVerifique o console para mais detalhes.`);
     }
   };
 
@@ -44,7 +325,7 @@ export default function SystemModel() {
       <main className={styles.mainContent}>
         <div className={styles.contentContainer}>
           <h2 className={styles.systemTitle}>{getSystemTitle()}</h2>
-          <div className={styles.systemDiagram}>
+          <div className={styles.systemDiagram} ref={diagramRef}>
             {systemName === 'case3p.m' ? (
               <ThreeBusSystemDiagram
                 externalControls={true}
@@ -86,10 +367,7 @@ export default function SystemModel() {
         {simulationStatus === 'result' ? (
           <button
             className={styles.exportButton}
-            onClick={() => {
-              // TODO: Implementar exportação
-              console.log('Exportar resultados');
-            }}
+            onClick={generatePDF}
           >
             EXPORTAR
           </button>
@@ -107,6 +385,71 @@ export default function SystemModel() {
             {simulationStatus === 'simulating' ? 'SIMULANDO...' : 'SIMULAR'}
           </button>
         )}
+      </div>
+
+      {/* Legenda oculta para captura no PDF */}
+      <div style={{ position: 'absolute', left: '-9999px', top: '0' }}>
+        <div 
+          ref={legendRef}
+          style={{
+            width: '700px',
+            backgroundColor: '#ffffff',
+            padding: '20px',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '15px'
+          }}
+        >
+          {/* Linha 1 */}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <svg width="30" height="24" style={{ marginRight: '10px' }}>
+              <circle cx="15" cy="12" r="10" fill="#4169E1" stroke="#000" strokeWidth="2" />
+              <circle cx="15" cy="12" r="5" fill="#000" />
+            </svg>
+            <span style={{ fontSize: '14px' }}>Barra de Referência</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <svg width="30" height="24" style={{ marginRight: '10px' }}>
+              <circle cx="15" cy="12" r="10" fill="#4169E1" stroke="#000" strokeWidth="2" />
+            </svg>
+            <span style={{ fontSize: '14px' }}>Barra</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <svg width="30" height="24" style={{ marginRight: '10px' }}>
+              <rect x="5" y="4" width="20" height="16" fill="#32CD32" stroke="#000" strokeWidth="2" rx="2" />
+              <polygon points="10,16 15,7 20,16" fill="#FFD700" stroke="#000" strokeWidth="1" />
+            </svg>
+            <span style={{ fontSize: '14px' }}>Barra geradora</span>
+          </div>
+
+          {/* Linha 2 */}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <svg width="30" height="24" style={{ marginRight: '10px' }}>
+              <rect x="5" y="4" width="20" height="16" fill="#FFB6C1" stroke="#000" strokeWidth="2" rx="2" />
+              <rect x="7" y="6" width="16" height="10" fill="#8B4513" stroke="#000" strokeWidth="1" />
+              <rect x="8" y="7" width="3" height="7" fill="#654321" />
+              <rect x="12" y="7" width="3" height="7" fill="#654321" />
+              <rect x="16" y="7" width="3" height="7" fill="#654321" />
+            </svg>
+            <span style={{ fontSize: '14px' }}>Barra com carga</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <svg width="30" height="24" style={{ marginRight: '10px' }}>
+              <rect x="3" y="9" width="24" height="6" fill="#90EE90" stroke="#006400" strokeWidth="2" rx="2" />
+              <line x1="5" y1="12" x2="22" y2="12" stroke="#006400" strokeWidth="2" />
+              <polygon points="20,12 17,10 17,14" fill="#006400" />
+            </svg>
+            <span style={{ fontSize: '14px' }}>Fluxo positivo</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <svg width="30" height="24" style={{ marginRight: '10px' }}>
+              <rect x="3" y="9" width="24" height="6" fill="#FFB6B6" stroke="#8B0000" strokeWidth="2" rx="2" />
+              <line x1="5" y1="12" x2="22" y2="12" stroke="#8B0000" strokeWidth="2" />
+              <polygon points="20,12 17,10 17,14" fill="#8B0000" />
+            </svg>
+            <span style={{ fontSize: '14px' }}>Fluxo negativo</span>
+          </div>
+        </div>
       </div>
 
       <Footer />

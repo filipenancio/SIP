@@ -94,27 +94,91 @@ export const ViewPortBaseSVG: React.FC<ViewPortBaseSVGProps> = ({
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: '#ffffff', overflow: 'hidden' }}>
-      {/* Controles de Zoom */}
-      <div style={{
+            {/* Controles de Zoom */}
+      <div className="zoom-controls" style={{
         position: 'absolute', top: '15px', right: '15px', zIndex: 10,
-        display: 'flex', flexDirection: 'column', gap: '5px'
+        display: 'flex', flexDirection: 'column', gap: '8px'
       }}>
-        <button onClick={zoomIn} style={{
-          width: '30px', height: '30px', backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', fontSize: '18px',
-          fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>+</button>
-        <button onClick={zoomOut} style={{
-          width: '30px', height: '30px', backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', fontSize: '18px',
-          fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>−</button>
-        <button onClick={resetView} style={{
-          width: '30px', height: '30px', backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', fontSize: '10px',
-          fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>⌂</button>
+        <button 
+          onClick={zoomIn}
+          style={{
+            width: '36px', height: '36px', fontSize: '20px',
+            backgroundColor: 'white', border: '1px solid #ccc',
+            borderRadius: '4px', cursor: 'pointer',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}
+          title="Zoom In"
+        >
+          +
+        </button>
+        <button 
+          onClick={zoomOut}
+          style={{
+            width: '36px', height: '36px', fontSize: '20px',
+            backgroundColor: 'white', border: '1px solid #ccc',
+            borderRadius: '4px', cursor: 'pointer',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}
+          title="Zoom Out"
+        >
+          −
+        </button>
+        <button 
+          onClick={resetView}
+          style={{
+            width: '36px', height: '36px', fontSize: '16px',
+            backgroundColor: 'white', border: '1px solid #ccc',
+            borderRadius: '4px', cursor: 'pointer',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}
+          title="Reset View"
+        >
+          ⌂
+        </button>
       </div>
+
+      {/* Legenda */}
+      <div className="legend-box" style={{
+        position: 'absolute', top: '15px', left: '15px', zIndex: 10,
+        backgroundColor: 'rgba(245, 245, 245, 0.95)', border: '1px solid #ccc',
+        borderRadius: '4px', padding: '12px', width: '170px', fontSize: '9px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+      }}>
+        {legend}
+      </div>
+
+      {/* Informações Base */}
+      <div 
+        className="base-values-box"
+        onClick={onBaseValuesClick}
+        style={{
+          position: 'absolute', bottom: '15px', left: '15px', zIndex: 10,
+          backgroundColor: 'rgba(245, 245, 245, 0.95)', border: '1px solid #ccc',
+          borderRadius: '4px', padding: '12px', width: '170px', fontSize: '10px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          cursor: onBaseValuesClick ? 'pointer' : 'default',
+          transition: 'background-color 0.2s'
+        }}
+        onMouseEnter={(e) => onBaseValuesClick && (e.currentTarget.style.backgroundColor = 'rgba(230, 230, 230, 0.95)')}
+        onMouseLeave={(e) => onBaseValuesClick && (e.currentTarget.style.backgroundColor = 'rgba(245, 245, 245, 0.95)')}
+      >
+        {baseValues}
+      </div>
+
+      {/* Totalizadores (apenas no modo resultado) */}
+      {resultTotals && (
+        <div className="result-totals-box" style={{
+          position: 'absolute', bottom: '15px', right: '15px', zIndex: 10,
+          backgroundColor: 'rgba(245, 245, 245, 0.95)', border: '1px solid #ccc',
+          borderRadius: '4px', padding: '12px', width: '200px', fontSize: '10px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          {resultTotals}
+        </div>
+      )}
 
       {/* Legenda fixa */}
       <div style={{

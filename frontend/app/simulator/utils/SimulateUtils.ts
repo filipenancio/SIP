@@ -171,8 +171,8 @@ export async function simulateSystem(mpc: MPC): Promise<MPCResult> {
       q_mvar: b.q_mvar
     })) || [],
     lines: rawResult.lines?.map((l: any) => ({
-      from: l.from_bus + 1,
-      to: l.to_bus + 1,
+      from_bus: l.from_bus + 1,
+      to_bus: l.to_bus + 1,
       p_from_mw: l.p_from_mw,
       q_from_mvar: l.q_from_mvar,
       p_to_mw: l.p_to_mw,

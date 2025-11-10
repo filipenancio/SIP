@@ -16,7 +16,7 @@ import { TooltipLoad } from './TooltipLoad';
 // Bus, Generator e Branch são importados dos componentes
 
 // Dados originais do case3p.m (sistema imutável para backup)
-const sistemaOriginal: MPC = {
+export const sistemaOriginal: MPC = {
   version: '2',
   baseMVA: 100,
   bus: [
@@ -543,6 +543,12 @@ export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({
       console.log('Resultado da simulação:', result);
       setSimulationResult(result);
       setSimulationStatus('result');
+      
+      // Disparar evento com dados da simulação para exportação
+      const simulationCompleteEvent = new CustomEvent('simulationComplete', {
+        detail: { result, input: mpc }
+      });
+      window.dispatchEvent(simulationCompleteEvent);
     } catch (error) {
       console.error('Erro na simulação:', error);
       setSimulationError(error instanceof Error ? error.message : 'Erro desconhecido');
@@ -984,8 +990,8 @@ export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({
   // Função para criar tooltip de linha
   const createBranchTooltip = (branch: Branch) => {
     const lineResult = simulationResult?.lines.find(l => 
-      (l.from === branch.fbus && l.to === branch.tbus) ||
-      (l.from === branch.tbus && l.to === branch.fbus)
+      (l.from_bus === branch.fbus && l.to_bus === branch.tbus) ||
+      (l.from_bus === branch.tbus && l.to_bus === branch.fbus)
     );
     return (
       <TooltipBranch 
@@ -1193,8 +1199,8 @@ export const ThreeBusSystemDiagram: React.FC<ThreeBusSystemDiagramProps> = ({
         data={editModal.data}
         lineResult={
           simulationResult?.lines.find(l => 
-            (l.from === editModal.data?.fbus && l.to === editModal.data?.tbus) ||
-            (l.from === editModal.data?.tbus && l.to === editModal.data?.fbus)
+            (l.from_bus === editModal.data?.fbus && l.to_bus === editModal.data?.tbus) ||
+            (l.from_bus === editModal.data?.tbus && l.to_bus === editModal.data?.fbus)
           )
         }
         onClose={closeEditModal}

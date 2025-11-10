@@ -16,8 +16,8 @@ const busPositions: Record<number, BusPosition> = {
 };
 
 export interface LineResult {
-  from: number;
-  to: number;
+  from_bus: number;
+  to_bus: number;
   p_from_mw: number;
   q_from_mvar: number;
   p_to_mw: number;
@@ -181,8 +181,8 @@ export const Diagram3Bus: React.FC<Diagram3BusProps> = ({
   const getLineResult = (fbus: number, tbus: number): LineResult | undefined => {
     if (!lineResults) return undefined;
     return lineResults.find(lr => 
-      (lr.from === fbus && lr.to === tbus) ||
-      (lr.from === tbus && lr.to === fbus)
+      (lr.from_bus === fbus && lr.to_bus === tbus) ||
+      (lr.from_bus === tbus && lr.to_bus === fbus)
     );
   };
 
