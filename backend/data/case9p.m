@@ -1,19 +1,4 @@
-function mpc = case9
-%CASE9    Power flow data for 9 bus, 3 generator case.
-%   Please see CASEFORMAT for details on the case file format.
-%
-%   Based on data from p. 70 of:
-%
-%   Chow, J. H., editor. Time-Scale Modeling of Dynamic Networks with
-%   Applications to Power Systems. Springer-Verlag, 1982.
-%   Part of the Lecture Notes in Control and Information Sciences book
-%   series (LNCIS, volume 46)
-%
-%   which in turn appears to come from:
-%
-%   R.P. Schulz, A.E. Turner and D.N. Ewart, "Long Term Power System
-%   Dynamics," EPRI Report 90-7-0, Palo Alto, California, 1974.
-
+function mpc = case9p
 %   MATPOWER
 
 %% MATPOWER Case Format : Version 2
@@ -59,12 +44,3 @@ mpc.branch = [
 	9	4	0.01	0.085	0.176	250	250	250	0	0	1	-360	360;
 ];
 
-%%-----  OPF Data  -----%%
-%% generator cost data
-%	1	startup	shutdown	n	x1	y1	...	xn	yn
-%	2	startup	shutdown	n	c(n-1)	...	c0
-mpc.gencost = [
-	2	1500	0	3	0.11	5	150;
-	2	2000	0	3	0.085	1.2	600;
-	2	3000	0	3	0.1225	1	335;
-];

@@ -58,6 +58,7 @@ export const TooltipGenerator: React.FC<TooltipGeneratorProps> = ({
         </>
       ) : (
         <>
+          <div>Vm: {generator.Vg.toFixed(3)} pu</div>
           <div>Pg: {generator.Pg.toFixed(1)} MW</div>
           <div>Qg: {generator.Qg.toFixed(1)} MVAr</div>
           <div>Pmax: {generator.Pmax.toFixed(1)} MW</div>

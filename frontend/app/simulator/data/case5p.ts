@@ -5,11 +5,11 @@ export const sistema5Barras: MPC = {
   version: '2',
   baseMVA: 100,
   bus: [
-    { bus_i: 1, type: 2, Pd: 0, Qd: 0, Gs: 0, Bs: 0, area: 1, Vm: 1, Va: 0, baseKV: 230, zone: 1, Vmax: 1.05, Vmin: 0.95 },
-    { bus_i: 2, type: 1, Pd: 200, Qd: 180, Gs: 0, Bs: 0, area: 1, Vm: 1, Va: 0, baseKV: 230, zone: 1, Vmax: 1.05, Vmin: 0.95 },
-    { bus_i: 3, type: 1, Pd: 60, Qd: 150, Gs: 0, Bs: 0, area: 1, Vm: 1, Va: 0, baseKV: 230, zone: 1, Vmax: 1.05, Vmin: 0.95 },
-    { bus_i: 4, type: 3, Pd: 0, Qd: 0, Gs: 0, Bs: 0, area: 1, Vm: 1.02, Va: 0, baseKV: 230, zone: 1, Vmax: 1.05, Vmin: 0.95 },
-    { bus_i: 5, type: 1, Pd: 40, Qd: 130, Gs: 0, Bs: 0, area: 1, Vm: 1, Va: 0, baseKV: 230, zone: 1, Vmax: 1.05, Vmin: 0.95 }
+    { bus_i: 1, type: 2, Pd: 0, Qd: 0, Gs: 0, Bs: 0, area: 1, Vm: 1, Va: 0, baseKV: 230, zone: 1, Vmax: 1.05, Vmin: 0.95, hasGenerator: true },
+    { bus_i: 2, type: 1, Pd: 200, Qd: 180, Gs: 0, Bs: 0, area: 1, Vm: 1, Va: 0, baseKV: 230, zone: 1, Vmax: 1.05, Vmin: 0.95, hasGenerator: false },
+    { bus_i: 3, type: 1, Pd: 60, Qd: 150, Gs: 0, Bs: 0, area: 1, Vm: 1, Va: 0, baseKV: 230, zone: 1, Vmax: 1.05, Vmin: 0.95, hasGenerator: false },
+    { bus_i: 4, type: 3, Pd: 0, Qd: 0, Gs: 0, Bs: 0, area: 1, Vm: 1.02, Va: 0, baseKV: 230, zone: 1, Vmax: 1.05, Vmin: 0.95, hasGenerator: true },
+    { bus_i: 5, type: 1, Pd: 40, Qd: 130, Gs: 0, Bs: 0, area: 1, Vm: 1, Va: 0, baseKV: 230, zone: 1, Vmax: 1.05, Vmin: 0.95, hasGenerator: false }
   ],
   gen: [
     { bus: 1, Pg: 150, Qg: 0, Qmax: 400, Qmin: -400, Vg: 1, mBase: 100, status: 1, Pmax: 0, Pmin: 0 },

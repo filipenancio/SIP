@@ -38,6 +38,7 @@ export const TooltipBus: React.FC<TooltipBusProps> = ({ bus, busResult, isResult
           <div>θ: {bus.Va.toFixed(2)}°</div>
           <div>Vmax: {bus.Vmax.toFixed(2)} pu</div>
           <div>Vmin: {bus.Vmin.toFixed(2)} pu</div>
+          <div>Bs: {bus.Bs.toFixed(3)} pu</div>
         </>
       )}
     </div>

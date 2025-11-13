@@ -15,13 +15,15 @@ const InputView = ({
   setInputValue, 
   handleBackToMain, 
   handleSubmit, 
-  isLoading 
+  isLoading,
+  selectedAlgorithm
 }: {
   inputValue: string;
   setInputValue: (value: string) => void;
   handleBackToMain: () => void;
   handleSubmit: () => void;
   isLoading: boolean;
+  selectedAlgorithm: string;
 }) => (
   <div className={styles.contentContainer}>
     <div className={styles.singleSection}>
@@ -43,20 +45,99 @@ end`}
           onChange={(e) => setInputValue(e.target.value)}
         />
       </div>
-      <div className={styles.actions}>
-        <button 
-          className={styles.backButton} 
-          onClick={handleBackToMain}
-        >
-          VOLTAR
-        </button>
-        <button
-          className={styles.simulateButton}
-          onClick={handleSubmit}
-          disabled={isLoading}
-        >
-          {isLoading ? "SIMULANDO..." : "SIMULAR"}
-        </button>
+      <div style={{ 
+        marginTop: '20px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '20px'
+      }}>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center',
+          gap: '6px',
+          flexWrap: 'wrap',
+          flex: 1
+        }}>
+          <span style={{ fontSize: '12px', fontWeight: '600', color: '#495057', marginRight: '8px' }}>
+            Algoritmo:
+          </span>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'default', opacity: 0.9 }}>
+            <input 
+              type="radio" 
+              value="nr" 
+              checked={selectedAlgorithm === 'nr'} 
+              disabled 
+              style={{ cursor: 'default', width: '14px', height: '14px' }}
+            />
+            <span style={{ fontSize: '11px', color: '#333', whiteSpace: 'nowrap' }}>Newton-Raphson (nr)</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'default', opacity: 0.6 }}>
+            <input 
+              type="radio" 
+              value="fdxb" 
+              checked={selectedAlgorithm === 'fdxb'} 
+              disabled 
+              style={{ cursor: 'default', width: '14px', height: '14px' }}
+            />
+            <span style={{ fontSize: '11px', color: '#666', whiteSpace: 'nowrap' }}>NR desacoplado (fdxb)</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'default', opacity: 0.6 }}>
+            <input 
+              type="radio" 
+              value="fdbx" 
+              checked={selectedAlgorithm === 'fdbx'} 
+              disabled 
+              style={{ cursor: 'default', width: '14px', height: '14px' }}
+            />
+            <span style={{ fontSize: '11px', color: '#666', whiteSpace: 'nowrap' }}>NR desacoplado (fdbx)</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'default', opacity: 0.6 }}>
+            <input 
+              type="radio" 
+              value="bfsw" 
+              checked={selectedAlgorithm === 'bfsw'} 
+              disabled 
+              style={{ cursor: 'default', width: '14px', height: '14px' }}
+            />
+            <span style={{ fontSize: '11px', color: '#666', whiteSpace: 'nowrap' }}>BF Sweep (bfsw)</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'default', opacity: 0.6 }}>
+            <input 
+              type="radio" 
+              value="gs" 
+              checked={selectedAlgorithm === 'gs'} 
+              disabled 
+              style={{ cursor: 'default', width: '14px', height: '14px' }}
+            />
+            <span style={{ fontSize: '11px', color: '#666', whiteSpace: 'nowrap' }}>Gauss-Seidel (gs)</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'default', opacity: 0.6 }}>
+            <input 
+              type="radio" 
+              value="dc" 
+              checked={selectedAlgorithm === 'dc'} 
+              disabled 
+              style={{ cursor: 'default', width: '14px', height: '14px' }}
+            />
+            <span style={{ fontSize: '11px', color: '#666', whiteSpace: 'nowrap' }}>DC Power Flow (dc)</span>
+          </label>
+        </div>
+        <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
+          <button 
+            className={styles.backButton} 
+            onClick={handleBackToMain}
+          >
+            VOLTAR
+          </button>
+          <button
+            className={styles.simulateButton}
+            onClick={handleSubmit}
+            disabled={isLoading}
+          >
+            {isLoading ? "SIMULANDO..." : "SIMULAR"}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -105,6 +186,7 @@ export default function NumericModel() {
   const [isLoading, setIsLoading] = useState(false);
   const [output, setOutput] = useState("");
   const [inputValue, setInputValue] = useState("");
+  const [selectedAlgorithm, setSelectedAlgorithm] = useState('nr'); // Newton-Raphson por padrão
   const [currentView, setCurrentView] = useState<'input' | 'output'>('input');
   const [errorModal, setErrorModal] = useState({ show: false, title: '', message: '' });
   const router = useRouter();
@@ -363,6 +445,7 @@ export default function NumericModel() {
             handleBackToMain={handleBackToMain}
             handleSubmit={handleSubmit}
             isLoading={isLoading}
+            selectedAlgorithm={selectedAlgorithm}
           />
         ) : (
           <OutputView 

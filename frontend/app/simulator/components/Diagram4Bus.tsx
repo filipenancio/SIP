@@ -37,24 +37,60 @@ const TransmissionLineResult: React.FC<{
   const midX = (x1 + x2) / 2;
   const midY = (y1 + y2) / 2;
 
-  const isPositiveFlow = lineResult.p_from_mw >= 0;
-  const lineColor = isPositiveFlow ? '#90EE90' : '#FFB6B6';
-  const strokeColor = isPositiveFlow ? '#006400' : '#8B0000';
-  const arrowColor = isPositiveFlow ? '#006400' : '#8B0000';
+  // Determinar cor baseado no carregamento da linha (loading_percent)
+  const loading = lineResult.loading_percent;
+  let lineColor: string;
+  let strokeColor: string;
+  
+  if (loading <= 50) {
+    // Verde
+    lineColor = '#90EE90';
+    strokeColor = '#228B22';
+  } else if (loading <= 75) {
+    // Amarelo
+    lineColor = '#FFFF99';
+    strokeColor = '#FFD700';
+  } else if (loading < 100) {
+    // Laranja
+    lineColor = '#FFB347';
+    strokeColor = '#FF8C00';
+  } else if (loading <= 110) {
+    // Vermelho
+    lineColor = '#FF6B6B';
+    strokeColor = '#DC143C';
+  } else {
+    // Roxo/Violeta escuro
+    lineColor = '#6a2166ff';
+    strokeColor = '#2e054bff';
+  }
+  
+  // Setas sempre pretas
+  const arrowColor = '#000000';
+
+  // Determinar direção da seta baseado no sinal do fluxo de potência ativa
+  // Se p_from_mw >= 0, fluxo vai de fbus para tbus (direção normal)
+  // Se p_from_mw < 0, fluxo vai de tbus para fbus (direção invertida)
+  const shouldInvertArrows = lineResult.p_from_mw < 0;
 
   const dx = x2 - x1;
   const dy = y2 - y1;
   const length = Math.sqrt(dx * dx + dy * dy);
-  const unitX = dx / length;
-  const unitY = dy / length;
+  
+  // Inverter direção se necessário
+  const unitX = shouldInvertArrows ? -(dx / length) : (dx / length);
+  const unitY = shouldInvertArrows ? -(dy / length) : (dy / length);
+  
+  // Ponto inicial das setas (invertido se necessário)
+  const startX = shouldInvertArrows ? x2 : x1;
+  const startY = shouldInvertArrows ? y2 : y1;
 
   const arrows = [];
   const numArrows = 4;
   const arrowSpacing = length / (numArrows + 1);
 
   for (let i = 1; i <= numArrows; i++) {
-    const arrowX = x1 + unitX * arrowSpacing * i;
-    const arrowY = y1 + unitY * arrowSpacing * i;
+    const arrowX = startX + unitX * arrowSpacing * i;
+    const arrowY = startY + unitY * arrowSpacing * i;
     const arrowSize = 8;
 
     const tipX = arrowX + unitX * arrowSize;

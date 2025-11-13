@@ -139,6 +139,44 @@ export function mpcToMatpower(mpc: MPC): string {
 }
 
 /**
+ * Verifica se há linhas sem capacidade e retorna informações sobre elas
+ */
+export function checkLinesWithoutCapacity(mpc: MPC): { hasIssue: boolean; count: number; lines: string; message: string } {
+  const linesWithoutCapacity = mpc.branch.filter(b => b.rateA === 0 || b.rateA === undefined);
+  
+  if (linesWithoutCapacity.length > 0) {
+    const linesList = linesWithoutCapacity
+      .map(b => `L${b.fbus}-${b.tbus}`)
+      .join(', ');
+    
+    const message = `${linesWithoutCapacity.length} linha(s) sem Capacidade A definida: ${linesList}.\n\nO sistema atribuirá baseMVA (${mpc.baseMVA} MVA) como Capacidade A para estas linhas.`;
+    
+    return {
+      hasIssue: true,
+      count: linesWithoutCapacity.length,
+      lines: linesList,
+      message
+    };
+  }
+  
+  return { hasIssue: false, count: 0, lines: '', message: '' };
+}
+
+/**
+ * Aplica baseMVA às linhas sem capacidade
+ */
+export function applyBaseMVAToLines(mpc: MPC): MPC {
+  const updatedMPC = { ...mpc };
+  updatedMPC.branch = mpc.branch.map(branch => {
+    if (branch.rateA === 0 || branch.rateA === undefined) {
+      return { ...branch, rateA: mpc.baseMVA };
+    }
+    return branch;
+  });
+  return updatedMPC;
+}
+
+/**
  * Faz a simulação chamando o backend
  */
 export async function simulateSystem(mpc: MPC): Promise<MPCResult> {

@@ -286,30 +286,59 @@ export const DefaultLegend: React.FC<{ includeResultLines?: boolean }> = ({ incl
     <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
       <svg width="22" height="18" style={{ marginRight: '10px' }}>
         <rect x="4" y="3" width="15" height="13" fill="#FFB6C1" stroke="#000" strokeWidth="1" rx="2" />
-        <rect x="6" y="5" width="11" height="7" fill="#8B4513" stroke="#000" strokeWidth="0.5" />
-        <rect x="7" y="6" width="2" height="5" fill="#654321" />
-        <rect x="9.5" y="6" width="2" height="5" fill="#654321" />
-        <rect x="12" y="6" width="2" height="5" fill="#654321" />
+        <rect x="7" y="6" width="9" height="6" fill="#8B4513" stroke="#000" strokeWidth="0.5" />
+        <rect x="8" y="7" width="2" height="4" fill="#654321" />
+        <rect x="10.5" y="7" width="2" height="4" fill="#654321" />
+        <rect x="13" y="7" width="2" height="4" fill="#654321" />
       </svg>
       <span style={{ color: '#333' }}>Barra com carga</span>
     </div>
     {includeResultLines ? (
       <>
+        {/* Linha separadora após título */}
+          <div style={{
+            height: '1px',
+            backgroundColor: '#d3d3d3',
+            margin: '4px 0',
+            marginBottom: '20px'
+        }}></div>
+        <div style={{ marginBottom: '10px', fontSize: '11px', color: '#555', fontWeight: '500' }}>
+          Carregamento das Linhas:
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
           <svg width="22" height="18" style={{ marginRight: '10px' }}>
-            <rect x="2" y="7" width="19" height="5" fill="#90EE90" stroke="#006400" strokeWidth="1" rx="2" />
-            <line x1="3" y1="9.5" x2="18" y2="9.5" stroke="#006400" strokeWidth="1" />
-            <polygon points="16,9.5 14,8 14,11" fill="#006400" stroke="#006400" strokeWidth="0.5" />
+            <rect x="2" y="7" width="19" height="5" fill="#90EE90" stroke="#228B22" strokeWidth="1" rx="2" />
+            <polygon points="16,9.5 14,8 14,11" fill="#000" stroke="#000" strokeWidth="0.5" />
           </svg>
-          <span style={{ color: '#333' }}>Fluxo positivo</span>
+          <span style={{ color: '#333', fontSize: '10px' }}>≤ 50% - Normal</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
           <svg width="22" height="18" style={{ marginRight: '10px' }}>
-            <rect x="2" y="7" width="19" height="5" fill="#FFB6B6" stroke="#8B0000" strokeWidth="1" rx="2" />
-            <line x1="3" y1="9.5" x2="18" y2="9.5" stroke="#8B0000" strokeWidth="1" />
-            <polygon points="16,9.5 14,8 14,11" fill="#8B0000" stroke="#8B0000" strokeWidth="0.5" />
+            <rect x="2" y="7" width="19" height="5" fill="#FFFF99" stroke="#FFD700" strokeWidth="1" rx="2" />
+            <polygon points="16,9.5 14,8 14,11" fill="#000" stroke="#000" strokeWidth="0.5" />
           </svg>
-          <span style={{ color: '#333' }}>Fluxo negativo</span>
+          <span style={{ color: '#333', fontSize: '10px' }}>51-75% - Moderado</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+          <svg width="22" height="18" style={{ marginRight: '10px' }}>
+            <rect x="2" y="7" width="19" height="5" fill="#FFB347" stroke="#FF8C00" strokeWidth="1" rx="2" />
+            <polygon points="16,9.5 14,8 14,11" fill="#000" stroke="#000" strokeWidth="0.5" />
+          </svg>
+          <span style={{ color: '#333', fontSize: '10px' }}>76-99% - Elevado</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+          <svg width="22" height="18" style={{ marginRight: '10px' }}>
+            <rect x="2" y="7" width="19" height="5" fill="#FF6B6B" stroke="#DC143C" strokeWidth="1" rx="2" />
+            <polygon points="16,9.5 14,8 14,11" fill="#000" stroke="#000" strokeWidth="0.5" />
+          </svg>
+          <span style={{ color: '#333', fontSize: '10px' }}>100-110% - Crítico</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+          <svg width="22" height="18" style={{ marginRight: '10px' }}>
+            <rect x="2" y="7" width="19" height="5" fill="#9370DB" stroke="#4B0082" strokeWidth="1" rx="2" />
+            <polygon points="16,9.5 14,8 14,11" fill="#000" stroke="#000" strokeWidth="0.5" />
+          </svg>
+          <span style={{ color: '#333', fontSize: '10px' }}>&gt; 110% - Sobrecarga</span>
         </div>
       </>
     ) : (

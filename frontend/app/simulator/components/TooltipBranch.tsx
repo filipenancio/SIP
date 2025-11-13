@@ -36,9 +36,9 @@ export const TooltipBranch: React.FC<TooltipBranchProps> = ({
           <div>R: {branch.r.toFixed(4)} pu</div>
           <div>X: {branch.x.toFixed(4)} pu</div>
           <div>B: {branch.b.toFixed(4)} pu</div>
-          <div>Rate A: {branch.rateA.toFixed(0)} MVA</div>
-          <div>Rate B: {branch.rateB.toFixed(0)} MVA</div>
-          <div>Rate C: {branch.rateC.toFixed(0)} MVA</div>
+          <div>Cap. A: {branch.rateA.toFixed(0)} MVA</div>
+          <div>Cap. B: {branch.rateB.toFixed(0)} MVA</div>
+          <div>Cap. C: {branch.rateC.toFixed(0)} MVA</div>
           <div>Tap: {branch.angle.toFixed(2)}°</div>
         </>
       )}

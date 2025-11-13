@@ -238,9 +238,9 @@ export const EditModalGenerator: React.FC<EditModalGeneratorProps> = ({
         ) : (
           // Visualização de Edição
           <>
+        {renderField('Tensão', 'Vg', 'pu', 0.8, 1.2, 0.01)}
         {renderField('Potência Ativa', 'Pg', 'MW', 0)}
         {renderField('Potência Reativa', 'Qg', 'MVAr')}
-        {renderField('Tensão', 'Vg', 'pu', 0.8, 1.2, 0.01)}
         {renderField('Potência Máxima', 'Pmax', 'MW', 0)}
         {renderField('Potência Mínima', 'Pmin', 'MW', 0)}
         {renderField('Reativa Máxima', 'Qmax', 'MVAr')}

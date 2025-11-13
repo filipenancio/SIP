@@ -97,7 +97,7 @@ export const EditModalBranch: React.FC<EditModalBranchProps> = ({
                 fontSize: '12px',
                 color: '#000'
               }}>
-                P (de):
+                Pot. Ativa (de):
               </label>
               <span style={{
                 width: '200px',
@@ -128,7 +128,7 @@ export const EditModalBranch: React.FC<EditModalBranchProps> = ({
                 fontSize: '12px',
                 color: '#000'
               }}>
-                Q (de):
+                Pot. Reativa (de):
               </label>
               <span style={{
                 width: '200px',
@@ -159,7 +159,7 @@ export const EditModalBranch: React.FC<EditModalBranchProps> = ({
                 fontSize: '12px',
                 color: '#000'
               }}>
-                P (para):
+                Pot. Ativa (para):
               </label>
               <span style={{
                 width: '200px',
@@ -190,7 +190,7 @@ export const EditModalBranch: React.FC<EditModalBranchProps> = ({
                 fontSize: '12px',
                 color: '#000'
               }}>
-                Q (para):
+                Pot. Reativa (para):
               </label>
               <span style={{
                 width: '200px',
@@ -221,7 +221,7 @@ export const EditModalBranch: React.FC<EditModalBranchProps> = ({
                 fontSize: '12px',
                 color: '#000'
               }}>
-                Perda P:
+                Perda Pot. Ativa:
               </label>
               <span style={{
                 width: '200px',
@@ -252,7 +252,7 @@ export const EditModalBranch: React.FC<EditModalBranchProps> = ({
                 fontSize: '12px',
                 color: '#000'
               }}>
-                Perda Q:
+                Perda Pot. Reativa:
               </label>
               <span style={{
                 width: '200px',
@@ -305,6 +305,17 @@ export const EditModalBranch: React.FC<EditModalBranchProps> = ({
                 %
               </span>
             </div>
+            <div>
+              <label style={{ 
+                minWidth: '130px', 
+                marginRight: '10px', 
+                fontWeight: 'bold',
+                fontSize: '12px',
+                color: '#000'
+              }}>
+              Obs.: O % de uso leva em consideração a potência aparente (S= &radic;(P<sup>2</sup> + Q<sup>2</sup>)) com base na capacidade da linha.
+              </label>
+            </div>
           </>
         ) : (
           // Visualização de Edição
@@ -341,13 +352,44 @@ export const EditModalBranch: React.FC<EditModalBranchProps> = ({
           </span>
         </div>
 
-        {renderField('Resistência', 'r', 'pu')}
-        {renderField('Reatância', 'x', 'pu')}
-        {renderField('Susceptância', 'b', 'pu')}
+        {renderField('Resistência (R)', 'r', 'pu')}
+        {renderField('Reatância (X)', 'x', 'pu')}
+        {renderField('Susceptância (B)', 'b', 'pu')}
         {renderField('Capacidade A', 'rateA', 'MVA')}
         {renderField('Capacidade B', 'rateB', 'MVA')}
         {renderField('Capacidade C', 'rateC', 'MVA')}
-        {renderField('Tap', 'angle', '°', -360, 360, 0.1)}
+        
+        {/* Campo TAP - somente leitura */}
+        <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
+          <label style={{ 
+            minWidth: '130px', 
+            marginRight: '10px', 
+            fontWeight: 'bold',
+            fontSize: '12px',
+            color: '#000'
+          }}>
+            Tap:
+          </label>
+          <span style={{
+            width: '200px',
+            padding: '6px 8px',
+            backgroundColor: '#f5f5f5',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            fontSize: '12px',
+            color: '#666'
+          }}>
+            {data.angle !== undefined ? data.angle.toFixed(1) : '0.0'}
+          </span>
+          <span style={{ 
+            marginLeft: '8px', 
+            fontSize: '12px', 
+            color: '#666',
+            minWidth: '50px'
+          }}>
+            %
+          </span>
+        </div>
           </>
         )}
       </div>

@@ -9,7 +9,7 @@ import { Diagram3Bus, busPositions3 } from './Diagram3Bus';
 import Diagram4Bus, { busPositions4 } from './Diagram4Bus';
 import Diagram5Bus, { busPositions5 } from './Diagram5Bus';
 import Diagram14Bus, { busPositions14 } from './Diagram14Bus';
-import { MPC, MPCResult, simulateSystem } from '../utils/SimulateUtils';
+import { MPC, MPCResult, simulateSystem, checkLinesWithoutCapacity, applyBaseMVAToLines } from '../utils/SimulateUtils';
 import { TooltipBus } from './TooltipBus';
 import { TooltipGenerator } from './TooltipGenerator';
 import { TooltipBranch } from './TooltipBranch';
@@ -381,6 +381,7 @@ export const BaseBusSystemDiagram: React.FC<BaseBusSystemDiagramProps> = ({
   const [confirmBaseRestoreModal, setConfirmBaseRestoreModal] = useState({ show: false });
   const [generatorEditConfirmModal, setGeneratorEditConfirmModal] = useState({ show: false, generator: null as Generator | null });
   const [busTypeChangeModal, setbusTypeChangeModal] = useState({ show: false, message: '', busId: 0, newType: 1, onConfirm: () => {} });
+  const [capacityWarningModal, setCapacityWarningModal] = useState({ show: false, message: '', mpc: null as MPC | null });
   const [baseModal, setBaseModal] = useState({
     show: false,
     baseMVA: systemData.baseMVA,
@@ -529,6 +530,19 @@ export const BaseBusSystemDiagram: React.FC<BaseBusSystemDiagramProps> = ({
         branch: sistemaState.branch
       };
       
+      // Verificar se há linhas sem capacidade
+      const capacityCheck = checkLinesWithoutCapacity(mpc);
+      if (capacityCheck.hasIssue) {
+        // Mostrar modal de aviso
+        setCapacityWarningModal({
+          show: true,
+          message: capacityCheck.message,
+          mpc: mpc
+        });
+        setSimulationStatus('idle');
+        return;
+      }
+      
       // console.log('MPC preparado:', mpc);
       // console.log('Geradores:', mpc.gen.map(g => ({ bus: g.bus, Pg: g.Pg, Qg: g.Qg, status: g.status })));
       const result = await simulateSystem(mpc);
@@ -554,6 +568,48 @@ export const BaseBusSystemDiagram: React.FC<BaseBusSystemDiagramProps> = ({
       setSimulationStatus('idle');
     }
   }, [externalOnSimulate, sistemaState]);
+
+  // Função para confirmar e aplicar baseMVA às linhas sem capacidade
+  const confirmCapacityWarning = useCallback(async () => {
+    if (!capacityWarningModal.mpc) return;
+    
+    try {
+      setCapacityWarningModal({ show: false, message: '', mpc: null });
+      setSimulationStatus('simulating');
+      setSimulationError(null);
+      
+      // Aplicar baseMVA às linhas sem capacidade
+      const updatedMPC = applyBaseMVAToLines(capacityWarningModal.mpc);
+      
+      // Executar a simulação com os dados corrigidos
+      const result = await simulateSystem(updatedMPC);
+      setSimulationResult(result);
+      setSimulationStatus('result');
+      
+      // Disparar evento com dados da simulação para exportação
+      const simulationCompleteEvent = new CustomEvent('simulationComplete', {
+        detail: { result, input: updatedMPC }
+      });
+      window.dispatchEvent(simulationCompleteEvent);
+    } catch (error) {
+      console.error('Erro na simulação:', error);
+      
+      // Disparar evento de erro para a página system tratar
+      const simulationErrorEvent = new CustomEvent('simulationError', {
+        detail: { error }
+      });
+      window.dispatchEvent(simulationErrorEvent);
+      
+      setSimulationError(error instanceof Error ? error.message : 'Erro desconhecido');
+      setSimulationStatus('idle');
+    }
+  }, [capacityWarningModal.mpc]);
+
+  // Função para cancelar o aviso de capacidade
+  const cancelCapacityWarning = useCallback(() => {
+    setCapacityWarningModal({ show: false, message: '', mpc: null });
+    setSimulationStatus('idle');
+  }, []);
 
   // Escutar evento de simulação externa
   React.useEffect(() => {
@@ -673,6 +729,13 @@ export const BaseBusSystemDiagram: React.FC<BaseBusSystemDiagramProps> = ({
           }
         }
         
+        // Se a barra tem gerador, garantir que a tensão da barra seja igual à tensão do gerador
+        // (a tensão da barra não deve ser editável quando há gerador)
+        const generator = newSistema.gen.find((g: Generator) => g.bus === updatedBus.bus_i && g.status === 1);
+        if (generator) {
+          updatedBus.Vm = generator.Vg;
+        }
+        
         newSistema.bus[busIndex] = updatedBus;
       }
     } else if (editModal.type === 'generator') {
@@ -682,48 +745,53 @@ export const BaseBusSystemDiagram: React.FC<BaseBusSystemDiagramProps> = ({
         const newGenerator = editModal.data;
         const busIndex = newSistema.bus.findIndex((b: Bus) => b.bus_i === newGenerator.bus);
         
-        if (busIndex !== -1 && newSistema.bus[busIndex].type !== 3) {
-          const hadPower = oldGenerator.Pg !== 0 || oldGenerator.Qg !== 0;
-          const hasPower = newGenerator.Pg !== 0 || newGenerator.Qg !== 0;
+        if (busIndex !== -1) {
+          // Sincronizar a tensão Vg do gerador com a tensão Vm da barra
+          newSistema.bus[busIndex].Vm = newGenerator.Vg;
           
-          // Caso 1: Gerador estava com P=0 e Q=0, mas agora tem potência
-          if (!hadPower && hasPower) {
-            needsBusTypeChange = true;
-            busTypeChangeInfo = {
-              busId: newGenerator.bus,
-              oldType: newSistema.bus[busIndex].type,
-              newType: 2,
-              message: `O gerador da Barra ${newGenerator.bus} agora possui geração. A barra será transformada em PV.`
-            };
-            newSistema.bus[busIndex].type = 2;
-          }
-          // Caso 2: Gerador tinha potência, mas agora P=0 e Q=0
-          else if (hadPower && !hasPower) {
-            needsBusTypeChange = true;
-            const willChange = newSistema.bus[busIndex].type !== 1;
-            busTypeChangeInfo = {
-              busId: newGenerator.bus,
-              oldType: newSistema.bus[busIndex].type,
-              newType: 1,
-              message: willChange
-                ? `O gerador da Barra ${newGenerator.bus} foi definido com P = 0 e Q = 0. O gerador será desconsiderado e a barra será transformada em PQ.`
-                : `O gerador da Barra ${newGenerator.bus} possui P = 0 e Q = 0. O gerador será desconsiderado (barra já é do tipo PQ).`
-            };
-            newSistema.bus[busIndex].type = 1;
-          }
-          // Caso 3: Gerador continua com P=0 e Q=0 (primeira edição após criação ou edição sem mudança)
-          else if (!hadPower && !hasPower) {
-            needsBusTypeChange = true;
-            const willChange = newSistema.bus[busIndex].type !== 1;
-            busTypeChangeInfo = {
-              busId: newGenerator.bus,
-              oldType: newSistema.bus[busIndex].type,
-              newType: 1,
-              message: willChange
-                ? `O gerador da Barra ${newGenerator.bus} possui P = 0 e Q = 0. O gerador será desconsiderado e a barra será transformada em PQ.`
-                : `O gerador da Barra ${newGenerator.bus} possui P = 0 e Q = 0. O gerador será desconsiderado (barra já é do tipo PQ).`
-            };
-            newSistema.bus[busIndex].type = 1;
+          if (newSistema.bus[busIndex].type !== 3) {
+            const hadPower = oldGenerator.Pg !== 0 || oldGenerator.Qg !== 0;
+            const hasPower = newGenerator.Pg !== 0 || newGenerator.Qg !== 0;
+            
+            // Caso 1: Gerador estava com P=0 e Q=0, mas agora tem potência
+            if (!hadPower && hasPower) {
+              needsBusTypeChange = true;
+              busTypeChangeInfo = {
+                busId: newGenerator.bus,
+                oldType: newSistema.bus[busIndex].type,
+                newType: 2,
+                message: `O gerador da Barra ${newGenerator.bus} agora possui geração. A barra será transformada em PV.`
+              };
+              newSistema.bus[busIndex].type = 2;
+            }
+            // Caso 2: Gerador tinha potência, mas agora P=0 e Q=0
+            else if (hadPower && !hasPower) {
+              needsBusTypeChange = true;
+              const willChange = newSistema.bus[busIndex].type !== 1;
+              busTypeChangeInfo = {
+                busId: newGenerator.bus,
+                oldType: newSistema.bus[busIndex].type,
+                newType: 1,
+                message: willChange
+                  ? `O gerador da Barra ${newGenerator.bus} foi definido com P = 0 e Q = 0. O gerador será desconsiderado e a barra será transformada em PQ.`
+                  : `O gerador da Barra ${newGenerator.bus} possui P = 0 e Q = 0. O gerador será desconsiderado (barra já é do tipo PQ).`
+              };
+              newSistema.bus[busIndex].type = 1;
+            }
+            // Caso 3: Gerador continua com P=0 e Q=0 (primeira edição após criação ou edição sem mudança)
+            else if (!hadPower && !hasPower) {
+              needsBusTypeChange = true;
+              const willChange = newSistema.bus[busIndex].type !== 1;
+              busTypeChangeInfo = {
+                busId: newGenerator.bus,
+                oldType: newSistema.bus[busIndex].type,
+                newType: 1,
+                message: willChange
+                  ? `O gerador da Barra ${newGenerator.bus} possui P = 0 e Q = 0. O gerador será desconsiderado e a barra será transformada em PQ.`
+                  : `O gerador da Barra ${newGenerator.bus} possui P = 0 e Q = 0. O gerador será desconsiderado (barra já é do tipo PQ).`
+              };
+              newSistema.bus[busIndex].type = 1;
+            }
           }
         }
         
@@ -774,37 +842,22 @@ export const BaseBusSystemDiagram: React.FC<BaseBusSystemDiagramProps> = ({
           // Criar uma cópia completa dos dados originais da barra, incluindo hasGenerator
           const restoredBusData = { ...originalBus };
           
+          // Manter o baseKV atual (definido globalmente)
+          const currentBus = sistemaState.bus.find((b: Bus) => b.bus_i === editModal.originalData.bus_i);
+          if (currentBus) {
+            restoredBusData.baseKV = currentBus.baseKV;
+            
+            // Se a barra tem gerador, manter a tensão do gerador
+            const currentGenerator = sistemaState.gen.find((g: Generator) => g.bus === currentBus.bus_i);
+            if (currentGenerator) {
+              restoredBusData.Vm = currentGenerator.Vg;
+            }
+          }
+          
           setEditModal(prev => ({
             ...prev,
             data: restoredBusData
           }));
-          
-          // Se a barra originalmente tinha gerador, também restaurar o gerador no sistema
-          if (originalBus.hasGenerator) {
-            const originalGenerator = systemData.gen.find((g: Generator) => g.bus === originalBus.bus_i);
-            if (originalGenerator) {
-              const newSistema = { ...sistemaState };
-              const genIndex = newSistema.gen.findIndex((g: Generator) => g.bus === originalBus.bus_i);
-              
-              if (genIndex !== -1) {
-                // Substituir gerador existente pelo original
-                newSistema.gen[genIndex] = { ...originalGenerator };
-              } else {
-                // Adicionar gerador original se não existir
-                newSistema.gen.push({ ...originalGenerator });
-              }
-              
-              setSistemaState(newSistema);
-            }
-          } else {
-            // Se a barra originalmente não tinha gerador, remover qualquer gerador existente
-            const newSistema = { ...sistemaState };
-            const genIndex = newSistema.gen.findIndex((g: Generator) => g.bus === originalBus.bus_i);
-            if (genIndex !== -1) {
-              newSistema.gen.splice(genIndex, 1);
-              setSistemaState(newSistema);
-            }
-          }
         }
       } else if (editModal.type === 'generator') {
         // Restaurar dados do gerador do sistema original
@@ -824,6 +877,9 @@ export const BaseBusSystemDiagram: React.FC<BaseBusSystemDiagramProps> = ({
         );
         if (originalBranch) {
           const restoredBranchData = { ...originalBranch };
+          
+          // Manter o baseMVA atual (definido globalmente)
+          restoredBranchData.baseMVA = sistemaState.baseMVA;
           
           setEditModal(prev => ({
             ...prev,
@@ -1307,6 +1363,33 @@ export const BaseBusSystemDiagram: React.FC<BaseBusSystemDiagramProps> = ({
           {
             label: 'OK',
             onClick: () => busTypeChangeModal.onConfirm(),
+            variant: 'primary'
+          }
+        ]}
+      />
+
+      <MessageModal
+        show={capacityWarningModal.show}
+        title="Aviso: Linhas sem Capacidade"
+        message={
+          <>
+            {capacityWarningModal.message.split('\n').map((line, i) => (
+              <span key={i}>
+                {line}
+                {i < capacityWarningModal.message.split('\n').length - 1 && <br />}
+              </span>
+            ))}
+          </>
+        }
+        buttons={[
+          {
+            label: 'Cancelar',
+            onClick: cancelCapacityWarning,
+            variant: 'secondary'
+          },
+          {
+            label: 'Continuar',
+            onClick: confirmCapacityWarning,
             variant: 'primary'
           }
         ]}
