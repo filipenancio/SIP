@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ReferenceBus, NormalBus, GeneratorIndicator, LoadIndicator, TransmissionLineNeutral } from './PowerSystemElements';
 import { Bus } from './EditModalBus';
 import { Generator } from './EditModalGenerator';
 import { Branch } from './EditModalBranch';
+import { calculateOptimalLineLabelPositions } from '../utils/LabelPositioning';
 
 interface BusPosition {
   x: number;
@@ -223,6 +224,28 @@ export const Diagram3Bus: React.FC<Diagram3BusProps> = ({
     );
   };
 
+  // Calcular posições otimizadas dos labels de linhas
+  const optimalLineLabelPositions = useMemo(() => {
+    const busData = buses.map(bus => {
+      const pos = busPositions[bus.bus_i];
+      return {
+        id: bus.bus_i,
+        x: pos?.x || 0,
+        y: pos?.y || 0,
+        hasGenerator: hasGenerator(bus.bus_i),
+        hasLoad: hasLoad(bus.bus_i)
+      };
+    }).filter(b => b.x !== 0 || b.y !== 0);
+
+    const branchData = branches.map(b => ({
+      from: b.fbus,
+      to: b.tbus,
+      label: `L${b.fbus}-${b.tbus}`
+    }));
+
+    return calculateOptimalLineLabelPositions(branchData, busPositions, busData);
+  }, [buses, branches, generators]);
+
   return (
     <>
       {/* Linhas de transmissão */}
@@ -252,6 +275,9 @@ export const Diagram3Bus: React.FC<Diagram3BusProps> = ({
             />
           );
         } else {
+          const lineKey = `${branch.fbus}-${branch.tbus}`;
+          const lineLabelPos = optimalLineLabelPositions.get(lineKey);
+
           return (
             <TransmissionLineNeutral
               key={index}
@@ -260,6 +286,7 @@ export const Diagram3Bus: React.FC<Diagram3BusProps> = ({
               x2={pos2.x}
               y2={pos2.y}
               label={`L${branch.fbus}-${branch.tbus}`}
+              labelPosition={lineLabelPos}
               branch={branch}
               onHover={(e, show) => onBranchHover && onBranchHover(e, show, show ? branch : undefined)}
               onClick={() => {

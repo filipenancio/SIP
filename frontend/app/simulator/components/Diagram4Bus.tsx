@@ -29,11 +29,12 @@ const TransmissionLineResult: React.FC<{
   x2: number;
   y2: number;
   label?: string;
+  labelPosition?: { x: number; y: number };
   branch: Branch;
   lineResult: LineResult;
   onHover: (e: React.MouseEvent, show: boolean) => void;
   onClick?: () => void;
-}> = ({ x1, y1, x2, y2, label, branch, lineResult, onHover, onClick }) => {
+}> = ({ x1, y1, x2, y2, label, labelPosition, branch, lineResult, onHover, onClick }) => {
   const midX = (x1 + x2) / 2;
   const midY = (y1 + y2) / 2;
 
@@ -138,8 +139,8 @@ const TransmissionLineResult: React.FC<{
       {arrows}
       {label && (
         <text
-          x={midX}
-          y={midY - 15}
+          x={labelPosition?.x || midX}
+          y={labelPosition?.y || (midY - 15)}
           textAnchor="middle"
           fill="#000"
           fontSize="12"
@@ -261,198 +262,49 @@ const Diagram4Bus: React.FC<Diagram4BusProps> = ({
         const pos2 = busPositions[branch.tbus];
         if (!pos1 || !pos2) return null;
 
-        const lineKey = `${branch.fbus}-${branch.tbus}`;
-        const lineLabelPos = optimalLineLabelPositions.get(lineKey);
-
         if (isResultView && lineResults) {
           const lineResult = getLineResult(branch.fbus, branch.tbus);
           if (!lineResult) return null;
 
-          const midX = (pos1.x + pos2.x) / 2;
-          const midY = (pos1.y + pos2.y) / 2;
-          const isPositiveFlow = lineResult.p_from_mw >= 0;
-          const lineColor = isPositiveFlow ? '#90EE90' : '#FFB6B6';
-          const strokeColor = isPositiveFlow ? '#006400' : '#8B0000';
-          const arrowColor = isPositiveFlow ? '#006400' : '#8B0000';
-
-          const dx = pos2.x - pos1.x;
-          const dy = pos2.y - pos1.y;
-          const length = Math.sqrt(dx * dx + dy * dy);
-          const unitX = dx / length;
-          const unitY = dy / length;
-
-          const arrows = [];
-          const numArrows = 4;
-          const arrowSpacing = length / (numArrows + 1);
-
-          for (let i = 1; i <= numArrows; i++) {
-            const arrowX = pos1.x + unitX * arrowSpacing * i;
-            const arrowY = pos1.y + unitY * arrowSpacing * i;
-            const arrowSize = 8;
-
-            const tipX = arrowX + unitX * arrowSize;
-            const tipY = arrowY + unitY * arrowSize;
-            const leftX = arrowX - unitX * arrowSize + unitY * arrowSize * 0.5;
-            const leftY = arrowY - unitY * arrowSize - unitX * arrowSize * 0.5;
-            const rightX = arrowX - unitX * arrowSize - unitY * arrowSize * 0.5;
-            const rightY = arrowY - unitY * arrowSize + unitX * arrowSize * 0.5;
-
-            arrows.push(
-              <polygon
-                key={i}
-                points={`${tipX},${tipY} ${leftX},${leftY} ${rightX},${rightY}`}
-                fill={arrowColor}
-                stroke={arrowColor}
-                strokeWidth="1"
-              />
-            );
-          }
+          const lineKey = `${branch.fbus}-${branch.tbus}`;
+          const lineLabelPos = optimalLineLabelPositions.get(lineKey);
 
           return (
-            <g 
+            <TransmissionLineResult
               key={index}
+              x1={pos1.x}
+              y1={pos1.y}
+              x2={pos2.x}
+              y2={pos2.y}
+              label={`L${branch.fbus}-${branch.tbus}`}
+              labelPosition={lineLabelPos}
+              branch={branch}
+              lineResult={lineResult}
+              onHover={(e, show) => onBranchHover && onBranchHover(e, show, show ? branch : undefined)}
               onClick={() => {
                 if (!hasDragged && onBranchClick) onBranchClick(branch);
               }}
-            >
-              <rect
-                x={midX - length / 2}
-                y={midY - 7}
-                width={length}
-                height={14}
-                fill={lineColor}
-                stroke={strokeColor}
-                strokeWidth="2"
-                rx="3"
-                transform={`rotate(${Math.atan2(dy, dx) * 180 / Math.PI}, ${midX}, ${midY})`}
-              />
-              <line
-                x1={pos1.x}
-                y1={pos1.y}
-                x2={pos2.x}
-                y2={pos2.y}
-                stroke="transparent"
-                strokeWidth="15"
-                style={{ cursor: 'pointer' }}
-                onMouseEnter={(e) => onBranchHover && onBranchHover(e, true, branch)}
-                onMouseLeave={(e) => onBranchHover && onBranchHover(e, false, undefined)}
-              />
-              {arrows}
-              {lineLabelPos && (
-                <text
-                  x={lineLabelPos.x}
-                  y={lineLabelPos.y}
-                  textAnchor="middle"
-                  fill="#000"
-                  fontSize="12"
-                  fontWeight="bold"
-                  style={{ cursor: 'pointer' }}
-                  onMouseEnter={(e) => onBranchHover && onBranchHover(e, true, branch)}
-                  onMouseLeave={(e) => onBranchHover && onBranchHover(e, false, undefined)}
-                  onClick={() => {
-                    if (!hasDragged && onBranchClick) onBranchClick(branch);
-                  }}
-                >
-                  L{branch.fbus}-{branch.tbus}
-                </text>
-              )}
-            </g>
+            />
           );
         } else {
-          // Renderização de linha neutra com label posicionado dinamicamente
-          const dx = pos2.x - pos1.x;
-          const dy = pos2.y - pos1.y;
-          const length = Math.sqrt(dx * dx + dy * dy);
-          const unitX = dx / length;
-          const unitY = dy / length;
-          
-          const arrows = [];
-          const numArrows = 4;
-          const arrowSpacing = length / (numArrows + 1);
-          
-          for (let i = 1; i <= numArrows; i++) {
-            const arrowX = pos1.x + unitX * arrowSpacing * i;
-            const arrowY = pos1.y + unitY * arrowSpacing * i;
-            const arrowSize = 8;
-            
-            const tipX = arrowX + unitX * arrowSize;
-            const tipY = arrowY + unitY * arrowSize;
-            const leftX = arrowX - unitX * arrowSize + unitY * arrowSize * 0.5;
-            const leftY = arrowY - unitY * arrowSize - unitX * arrowSize * 0.5;
-            const rightX = arrowX - unitX * arrowSize - unitY * arrowSize * 0.5;
-            const rightY = arrowY - unitY * arrowSize + unitX * arrowSize * 0.5;
-            
-            arrows.push(
-              <polygon
-                key={i}
-                points={`${tipX},${tipY} ${leftX},${leftY} ${rightX},${rightY}`}
-                fill="#000"
-                stroke="#000"
-                strokeWidth="1"
-              />
-            );
-          }
+          const lineKey = `${branch.fbus}-${branch.tbus}`;
+          const lineLabelPos = optimalLineLabelPositions.get(lineKey);
 
           return (
-            <g 
+            <TransmissionLineNeutral
               key={index}
+              x1={pos1.x}
+              y1={pos1.y}
+              x2={pos2.x}
+              y2={pos2.y}
+              label={`L${branch.fbus}-${branch.tbus}`}
+              labelPosition={lineLabelPos}
+              branch={branch}
+              onHover={(e, show) => onBranchHover && onBranchHover(e, show, show ? branch : undefined)}
               onClick={() => {
                 if (!hasDragged && onBranchClick) onBranchClick(branch);
               }}
-            >
-              <line 
-                x1={pos1.x} 
-                y1={pos1.y} 
-                x2={pos2.x} 
-                y2={pos2.y} 
-                stroke="transparent" 
-                strokeWidth="15"
-                style={{ cursor: 'pointer' }}
-                onMouseEnter={(e) => onBranchHover && onBranchHover(e, true, branch)}
-                onMouseLeave={(e) => onBranchHover && onBranchHover(e, false, undefined)}
-              />
-              
-              <line 
-                x1={pos1.x} 
-                y1={pos1.y} 
-                x2={pos2.x} 
-                y2={pos2.y} 
-                stroke="#D3D3D3" 
-                strokeWidth="9"
-                style={{ pointerEvents: 'none' }}
-              />
-              
-              <line 
-                x1={pos1.x} 
-                y1={pos1.y} 
-                x2={pos2.x} 
-                y2={pos2.y} 
-                stroke="#000" 
-                strokeWidth="4"
-                style={{ pointerEvents: 'none' }}
-              />
-              
-              {arrows}
-              
-              {lineLabelPos && (
-                <text
-                  x={lineLabelPos.x}
-                  y={lineLabelPos.y}
-                  textAnchor="middle"
-                  fill="#000"
-                  fontSize="12"
-                  fontWeight="bold"
-                  style={{ cursor: 'pointer' }}
-                  onMouseEnter={(e) => onBranchHover && onBranchHover(e, true, branch)}
-                  onMouseLeave={(e) => onBranchHover && onBranchHover(e, false, undefined)}
-                  onClick={() => {
-                    if (!hasDragged && onBranchClick) onBranchClick(branch);
-                  }}
-                >
-                  L{branch.fbus}-{branch.tbus}
-                </text>
-              )}
-            </g>
+            />
           );
         }
       })}

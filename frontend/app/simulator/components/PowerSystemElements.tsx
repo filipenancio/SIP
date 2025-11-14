@@ -194,11 +194,12 @@ export const TransmissionLineNeutral: React.FC<{
   y1: number; 
   x2: number; 
   y2: number; 
-  label?: string; 
+  label?: string;
+  labelPosition?: { x: number; y: number };
   branch: Branch;
   onHover: (e: React.MouseEvent, show: boolean) => void;
   onClick?: () => void;
-}> = ({ x1, y1, x2, y2, label, branch, onHover, onClick }) => {
+}> = ({ x1, y1, x2, y2, label, labelPosition, branch, onHover, onClick }) => {
   const midX = (x1 + x2) / 2;
   const midY = (y1 + y2) / 2;
   
@@ -280,8 +281,8 @@ export const TransmissionLineNeutral: React.FC<{
       {/* Label com hover */}
       {label && (
         <text 
-          x={midX} 
-          y={midY - 15} 
+          x={labelPosition?.x || midX} 
+          y={labelPosition?.y || (midY - 15)} 
           textAnchor="middle" 
           fill="#000" 
           fontSize="12" 
